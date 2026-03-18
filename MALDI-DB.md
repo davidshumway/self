@@ -538,7 +538,7 @@ function upload(event) {
       return xhr;
     },
     data: new FormData(this),
-    url: "{% url 'chat:ajax_upload' %}",
+    url: "\{\% url 'chat:ajax_upload' \%\}",
     type: 'POST',
     processData: false,
     contentType: false,
