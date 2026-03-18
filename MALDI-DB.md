@@ -1,6 +1,10 @@
-Building MALDI-DB: A Community-Driven Mass Spectrometry Platform
+###  Building MALDI-DB: A Community-Driven Mass Spectrometry Platform
 
 Technical Retrospective
+
+Author: David Shumway
+
+Last updated March 18, 2026
 
 Introduction
 
@@ -43,11 +47,11 @@ The Data Model Challenge
 
 Mass spectrometry data is complex. Each spectrum comes with:
 
-· Peak lists (mass/intensity/SNR values)
-· Instrument settings (laser attenuation, TOF mode, mass range)
-· Experimental metadata (cultivation conditions, matrix type)
-· Sample information (strain ID, taxonomy)
-· Processing history (preprocessing steps, peak picking parameters)
+* Peak lists (mass/intensity/SNR values)
+* Instrument settings (laser attenuation, TOF mode, mass range)
+* Experimental metadata (cultivation conditions, matrix type)
+* Sample information (strain ID, taxonomy)
+* Processing history (preprocessing steps, peak picking parameters)
 
 We made several key design decisions that shaped the platform:
 
@@ -139,16 +143,16 @@ R('''
 
 Pros:
 
-· Simple Python-R communication in the same process
-· No network latency
-· Direct memory sharing
+* Simple Python-R communication in the same process
+* No network latency
+* Direct memory sharing
 
 Cons:
 
-· R runs in the Django process, risking stability
-· Memory issues with large datasets (R's garbage collection vs Python's)
-· GIL limitations
-· Deployment complexity (R must be installed in the same environment)
+* R runs in the Django process, risking stability
+* Memory issues with large datasets (R's garbage collection vs Python's)
+* GIL limitations
+* Deployment complexity (R must be installed in the same environment)
 
 Approach 2: plumber R API (out-of-process)
 
@@ -190,17 +194,17 @@ function(req, id, ids) {
 
 Pros:
 
-· Isolated process—R crashes don't take down Django
-· Can scale independently
-· Better memory management
-· Clean separation of concerns
-· R can query PostgreSQL directly
+* Isolated process—R crashes don't take down Django
+* Can scale independently
+* Better memory management
+* Clean separation of concerns
+* R can query PostgreSQL directly
 
 Cons:
 
-· Network latency
-· Serialization overhead
-· Additional deployment complexity
+* Network latency
+* Serialization overhead
+* Additional deployment complexity
 
 We settled on the plumber approach for production. The R service runs on port 7001 in its own Docker container, communicates via JSON, and handles the heavy scientific computing. This architecture proved more robust, especially when processing large datasets where memory usage was unpredictable.
 
@@ -208,10 +212,10 @@ Handling Long-Running Tasks
 
 Scientific workflows aren't instant. A user might:
 
-· Upload a SQLite database with thousands of spectra (minutes)
-· Collapse replicates across a whole library (minutes to hours)
-· Search for similar spectra across the entire database (seconds to minutes)
-· Preprocess raw mzML files (minutes each)
+* Upload a SQLite database with thousands of spectra (minutes)
+* Collapse replicates across a whole library (minutes to hours)
+* Search for similar spectra across the entire database (seconds to minutes)
+* Preprocess raw mzML files (minutes each)
 
 We couldn't make users wait synchronously. The solution was an async task system with progress tracking.
 
@@ -656,7 +660,7 @@ requests
 
 Data Import Pipeline
 
-A major feature was importing existing IDBac SQLite databases. The R01 grant had generated terabytes of data in this format. We needed to bring it into PostgreSQL while preserving all metadata.
+A major feature was importing IDBac SQLite databases. We needed to bring IDBac SQLite data into PostgreSQL while preserving all metadata.
 
 ```python
 @start_new_thread
@@ -701,11 +705,11 @@ rows = cursor.execute('SELECT * FROM '+t).fetchall()
 
 The import supports:
 
-· Single file uploads
-· Batch imports of all R01 data files (13+ SQLite databases)
-· Progress tracking through UserTaskStatus
-· Error logging for debugging
-· Preservation of all relationships (XML → Spectra, Metadata → Spectra)
+* Single file uploads
+* Batch imports of all R01 data files (13+ SQLite databases)
+* Progress tracking through UserTaskStatus
+* Error logging for debugging
+* Preservation of all relationships (XML → Spectra, Metadata → Spectra)
 
 Testing Strategy
 
@@ -736,12 +740,12 @@ class FollowerTestCase(TestCase):
 
 Tests covered:
 
-· User authentication and registration
-· Profile editing
-· Follower relationships
-· Data import workflows (though these were harder to test automatically)
-· Search functionality
-· Model constraints and validation
+* User authentication and registration
+* Profile editing
+* Follower relationships
+* Data import workflows (though these were harder to test automatically)
+* Search functionality
+* Model constraints and validation
 
 The tests.py in the accounts app shows thorough testing of the social features, ensuring the platform's community aspects worked reliably.
 
@@ -769,40 +773,24 @@ The Codebase Today
 
 The complete platform includes:
 
-· 15+ Django models capturing the scientific domain
-· R integration via plumber API with MALDIquant and IDBacApp
-· Async task queue with progress tracking
-· AJAX file uploads with progress indicators
-· Advanced search with cascading taxonomic filters
-· Spectral similarity search using cosine similarity
-· User management with lab groups, ORCIDs, and social features
-· Comprehensive testing for critical paths
-· Docker deployment with docker-compose
-· Responsive UI using Bootstrap 4
+* 15+ Django models capturing the scientific domain
+* R integration via plumber API with MALDIquant and IDBacApp
+* Async task queue with progress tracking
+* AJAX file uploads with progress indicators
+* Advanced search with cascading taxonomic filters
+* Spectral similarity search using cosine similarity
+* User management with lab groups, ORCIDs, and social features
+* Comprehensive testing for critical paths
+* Docker deployment with docker-compose
+* Responsive UI using Bootstrap 4
 
-The manage.py is standard Django:
-
-```python
-#!/usr/bin/env python
-import os
-import sys
-
-if __name__ == '__main__':
-    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'soMedia.settings')
-    try:
-        from django.core.management import execute_from_command_line
-    except ImportError as exc:
-        raise ImportError(...) from exc
-    execute_from_command_line(sys.argv)
-```
-
-Conclusion
+### Conclusion
 
 Building MALDI-DB was a journey from concept to working platform over three years. We learned that scientific software requires deep domain knowledge, thoughtful data modeling, and robust infrastructure. The platform we built can serve as a foundation for community-driven bacterial identification—a resource that didn't exist before.
 
 For researchers building similar platforms, I hope this technical overview helps you navigate the challenges of integrating web frameworks with scientific computing, handling complex data models, and building community features that scientists actually need.
 
-The complete codebase is available at [GitHub repository URL]. We welcome contributions from the community.
+The complete codebase is available at https://github.com/davidshumway/maldidb. We welcome contributions from the community.
 
 ---
 
