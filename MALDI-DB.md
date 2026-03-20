@@ -6,13 +6,13 @@ Author: David Shumway
 
 Last updated March 18, 2026
 
-Introduction
+#### Introduction
 
 In 2018, our team set out to build MALDI-DB—a web platform for bacterial identification using MALDI-TOF mass spectrometry. The goal was ambitious: create a community-driven repository where researchers could upload, share, and analyze bacterial protein spectra, with integrated machine learning workflows for identification. Think of it as an online version of IDBac, but with a centralized repository and collaborative features that didn't exist in the scientific community.
 
 Over three years, we designed and built a complete platform: Django backend with PostgreSQL, R integration for scientific computing, Docker deployment, and a thoughtful data model capturing the complexity of mass spectrometry experiments. This post walks through the technical architecture, the decisions we made, and the lessons learned.
 
-The Architecture
+#### The Architecture
 
 Overview
 
@@ -31,7 +31,7 @@ The platform consists of several integrated components:
 └─────────────────┘     └──────────────┘     └─────────────────┘
 ```
 
-Why Django?
+#### Why Django?
 
 We chose Django for several reasons that proved essential for a scientific platform:
 
@@ -43,7 +43,7 @@ We chose Django for several reasons that proved essential for a scientific platf
 
 The models.py tells the story: 15+ models capturing spectra, metadata, libraries, user tasks, and experimental context. Each model reflects real scientific concepts from the IDBac R package that the domain scientists had already developed.
 
-The Data Model Challenge
+#### The Data Model Challenge
 
 Mass spectrometry data is complex. Each spectrum comes with:
 
@@ -55,7 +55,7 @@ Mass spectrometry data is complex. Each spectrum comes with:
 
 We made several key design decisions that shaped the platform:
 
-1. Store peak data as text fields
+  1. Store peak data as text fields
 
 ```python
 peak_mass = models.TextField(blank=True,
@@ -68,7 +68,7 @@ peak_snr = models.TextField(blank=True,
 
 This might look odd to someone coming from traditional relational database design, but it's pragmatic. Peak lists are variable-length (from dozens to thousands of peaks) and are almost always accessed as whole units. JSON/text storage avoids complex normalization and performs well for our use case. The alternative—a separate Peak table with foreign keys—would create millions of rows and slow down queries dramatically.
 
-2. Separate instrument metadata into XML table
+  2. Separate instrument metadata into XML table
 
 ```python
 class XML(models.Model):
@@ -79,7 +79,7 @@ class XML(models.Model):
 
 Bruker MALDI-TOF instruments generate XML files with hundreds of parameters. Rather than flattening all of these into the Spectra model (which would have required dozens of nullable fields and constant schema changes when new instrument versions appeared), we stored the raw XML and extracted key searchable fields. This preserved the complete instrument context while keeping the schema stable.
 
-3. Abstract base classes for common patterns
+  3. Abstract base classes for common patterns
 
 ```python
 class AbstractSpectra(models.Model):
@@ -105,7 +105,7 @@ class SearchSpectra(AbstractSpectra):
 
 This inheritance pattern allowed us to reuse the core peak data structure across different contexts while adding specialized fields where needed. The CollapsedSpectra model, for example, tracks which original spectra were averaged and the parameters used (percent presence, SNR threshold) for full reproducibility.
 
-4. Comprehensive metadata tracking
+  4. Comprehensive metadata tracking
 
 ```python
 class Metadata(models.Model):
@@ -121,7 +121,7 @@ class Metadata(models.Model):
 
 The Metadata model captures the biological context that makes spectra meaningful. This level of detail—down to cultivation media and temperature—is essential for reproducibility. A spectrum without its experimental context is nearly useless for future researchers trying to replicate or build upon findings.
 
-R Integration: Two Approaches
+#### R Integration: Two Approaches
 
 The IDBac R package already contained mature algorithms for peak processing, binning, and cosine similarity calculations. Our challenge was integrating this existing scientific code with a modern web application. We tried two approaches:
 
@@ -208,7 +208,7 @@ Cons:
 
 We settled on the plumber approach for production. The R service runs on port 7001 in its own Docker container, communicates via JSON, and handles the heavy scientific computing. This architecture proved more robust, especially when processing large datasets where memory usage was unpredictable.
 
-Handling Long-Running Tasks
+#### Handling Long-Running Tasks
 
 Scientific workflows aren't instant. A user might:
 
@@ -283,7 +283,7 @@ def idbac_sqlite_insert(request, tmpForm, uploadFile, user_task):
 
 This simple decorator lets us mark any function as async. The daemon=True ensures threads don't block server shutdown. For production, we would migrate to Celery for better reliability, but this served well during development.
 
-User Management and Community Features
+#### User Management and Community Features
 
 A community-driven database needs social features. We built:
 
@@ -300,7 +300,7 @@ class LabGroup(models.Model):
 
 This models real research groups. Owners can manage the lab, members can contribute data. The platform automatically adds owners as members on creation (though the commented signal handler shows we had to work through some Django quirks).
 
-Privacy Controls at Multiple Levels
+#### Privacy Controls at Multiple Levels
 
 ```python
 PUBLIC = 'PB'
@@ -320,7 +320,7 @@ privacy_level = models.CharField(
 
 Researchers need control over their data. Some projects are pre-publication and must remain private. Others can be shared immediately. By making privacy granular (at the library and individual spectra level), we give users flexibility while encouraging sharing.
 
-Quality Ratings Inspired by GNPS
+#### Quality Ratings Inspired by GNPS
 
 ```python
 GOLD = 'GO'
@@ -340,7 +340,7 @@ quality_rating = models.CharField(
 
 Not all data is equal. Gold standards are manually curated, silver comes from published studies, bronze is community-submitted. This tiered system, borrowed from GNPS, lets users trust results appropriately.
 
-ORCID Integration for Academic Credit
+#### ORCID Integration for Academic Credit
 
 ```python
 user_firstname_lastname = models.CharField(max_length=255, blank=True)
@@ -351,7 +351,7 @@ pi_orcid = models.CharField(max_length=255, blank=True)
 
 In academia, credit matters. Storing ORCIDs ensures contributors can be properly cited and tracked. This also helps with attribution when data gets reused in publications.
 
-User Profiles with Social Features
+#### User Profiles with Social Features
 
 The profile.html template shows a clean user profile interface:
 
@@ -393,7 +393,7 @@ class User(AbstractUser):
 
 This enables researchers to follow other labs' work, building a collaborative network around the data.
 
-Search and Discovery
+#### Search and Discovery
 
 The search interface needed to handle complex queries: taxonomic filters, instrument parameters, and spectral similarity.
 
@@ -481,7 +481,7 @@ class CosineSearchTable(tables.Table):
 
 This approach lets users see exactly how similar each match is to their query.
 
-User Interface Design
+#### User Interface Design
 
 The UI needed to be approachable for microbiologists who might not be bioinformatics experts. The basic_search.html template shows our design philosophy:
 
@@ -571,7 +571,7 @@ $(".custom-file-input").on("change", function() {
 
 Bootstrap's custom file input doesn't show the selected filename by default. This simple fix improves usability dramatically.
 
-Deployment with Docker
+#### Deployment with Docker
 
 The entrypoint.sh script and docker-compose configuration made deployment reproducible:
 
@@ -658,7 +658,7 @@ pandas
 requests
 ```
 
-Data Import Pipeline
+#### Data Import Pipeline
 
 A major feature was importing IDBac SQLite databases. We needed to bring IDBac SQLite data into PostgreSQL while preserving all metadata.
 
@@ -711,7 +711,7 @@ The import supports:
 * Error logging for debugging
 * Preservation of all relationships (XML → Spectra, Metadata → Spectra)
 
-Testing Strategy
+#### Testing Strategy
 
 We built comprehensive tests for critical paths:
 
@@ -749,7 +749,7 @@ Tests covered:
 
 The tests.py in the accounts app shows thorough testing of the social features, ensuring the platform's community aspects worked reliably.
 
-Lessons Learned
+#### Lessons Learned
 
 What Worked Well
 
@@ -769,7 +769,7 @@ What We'd Do Differently
 5. User testing earlier - The interface worked, but user feedback would have refined workflows. The cascading taxonomy filters, for example, could have been simplified based on real usage.
 6. Versioned API for R services - The plumber API endpoints (/binPeaks, /cosine) didn't have versioning. As algorithms improved, we'd need to support both old and new versions.
 
-The Codebase Today
+#### The Codebase Today
 
 The complete platform includes:
 
