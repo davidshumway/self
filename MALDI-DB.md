@@ -10,7 +10,7 @@ Last updated March 18, 2026
 
 In 2018, our team set out to build MALDI-DB—a web platform for bacterial identification using MALDI-TOF mass spectrometry. The goal was ambitious: create a community-driven repository where researchers could upload, share, and analyze bacterial protein spectra, with integrated machine learning workflows for identification. Think of it as an online version of IDBac, but with a centralized repository and collaborative features that didn't exist in the scientific community.
 
-Over three years, we designed and built a complete platform: Django backend with PostgreSQL, R integration for scientific computing, Docker deployment, and a thoughtful data model capturing the complexity of mass spectrometry experiments. This post walks through the technical architecture, the decisions we made, and the lessons learned.
+The platform was built during a development burst from December 2020 to September 2021—roughly nine months of active coding at the tail end of a three-year project. During that time, we built: a Django backend with PostgreSQL, R integration for scientific computing, Docker deployment, and a thoughtful data model capturing the complexity of mass spectrometry experiments. This post walks through the technical architecture, the decisions we made, and the lessons learned.
 
 #### The Architecture
 
@@ -55,7 +55,7 @@ Mass spectrometry data is complex. Each spectrum comes with:
 
 We made several key design decisions that shaped the platform:
 
-  1. Store peak data as text fields
+1\. Store peak data as text fields
 
 ```python
 peak_mass = models.TextField(blank=True,
@@ -68,7 +68,7 @@ peak_snr = models.TextField(blank=True,
 
 This might look odd to someone coming from traditional relational database design, but it's pragmatic. Peak lists are variable-length (from dozens to thousands of peaks) and are almost always accessed as whole units. JSON/text storage avoids complex normalization and performs well for our use case. The alternative—a separate Peak table with foreign keys—would create millions of rows and slow down queries dramatically.
 
-  2. Separate instrument metadata into XML table
+2\. Separate instrument metadata into XML table
 
 ```python
 class XML(models.Model):
@@ -79,7 +79,7 @@ class XML(models.Model):
 
 Bruker MALDI-TOF instruments generate XML files with hundreds of parameters. Rather than flattening all of these into the Spectra model (which would have required dozens of nullable fields and constant schema changes when new instrument versions appeared), we stored the raw XML and extracted key searchable fields. This preserved the complete instrument context while keeping the schema stable.
 
-  3. Abstract base classes for common patterns
+3\. Abstract base classes for common patterns
 
 ```python
 class AbstractSpectra(models.Model):
@@ -105,7 +105,7 @@ class SearchSpectra(AbstractSpectra):
 
 This inheritance pattern allowed us to reuse the core peak data structure across different contexts while adding specialized fields where needed. The CollapsedSpectra model, for example, tracks which original spectra were averaged and the parameters used (percent presence, SNR threshold) for full reproducibility.
 
-  4. Comprehensive metadata tracking
+4\. Comprehensive metadata tracking
 
 ```python
 class Metadata(models.Model):
