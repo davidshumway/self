@@ -784,13 +784,119 @@ The complete platform includes:
 * Docker deployment with docker-compose
 * Responsive UI using Bootstrap 4
 
+#### The Platform in Action
+
+The following screenshots show MALDI-DB as it existed in mid-2021—functional, usable, and very much still in progress. The UI is Bootstrap 4, the workflows reflect real scientific needs, and the data is real.
+
+*Home & Authentication*
+
+New users could register directly, with ORCID fields built into the profile system for academic credit.
+
+Home screen with two primary workflows: search or library management
+![Home screen with two primary workflows: search or library management](https://github.com/idbac/maldidb/blob/master/mdb/media/home.png "Home")
+
+Registration form—simple, with standard fields
+![Registration form—simple, with standard fields](https://github.com/idbac/maldidb/blob/master/mdb/media/register.png "Register")
+
+
+
+*Library Management*
+
+Users could create libraries, import data from IDBac SQLite files, and manage metadata.
+
+Library list view with spectra counts and privacy settings
+![Library list view with spectra counts and privacy settings](https://github.com/idbac/maldidb/blob/master/mdb/media/manage1.png "")
+
+Creating a new library—privacy and quality ratings visible
+![Creating a new library—privacy and quality ratings visible](https://github.com/idbac/maldidb/blob/master/mdb/media/newlibrary.png "")
+
+
+Library detail view with collapse option
+![](https://github.com/idbac/maldidb/blob/master/mdb/media/libraries2.png "")
+
+
+*Data Import*
+
+The SQLite import pipeline handled real R01 data—13+ databases, thousands of spectra, with progress tracking.
+
+SQLite import interface—single file or batch import from a known directory
+![SQLite import interface—single file or batch import from a known directory](https://github.com/idbac/maldidb/blob/master/mdb/media/newsqlite.png "")
+
+
+*File Upload*
+
+Users could upload mzML/mzXML files with progress indicators and preprocessing options.
+
+Initial upload view
+![Initial upload view](https://github.com/idbac/maldidb/blob/master/mdb/media/fileupload2.png "")
+
+File selection pre-upload
+![File selection pre-upload](https://github.com/idbac/maldidb/blob/master/mdb/media/fileupload2.png "")
+
+Expanded options—library selection, preprocessing
+![Expanded options—library selection, preprocessing](https://github.com/idbac/maldidb/blob/master/mdb/media/fileupload3.png "")
+
+Upload queue with file listing
+![Upload queue with file listing](https://github.com/idbac/maldidb/blob/master/mdb/media/uploads1.png "")
+
+
+*Spectral Search*
+
+The core scientific feature: upload an unknown spectrum and find matches in the database.
+
+Search—start with file upload
+![Search—start with file upload](https://github.com/idbac/maldidb/blob/master/mdb/media/search1.png "")
+
+Expanded search options—library filters, preprocessing
+![Expanded search options—library filters, preprocessing](https://github.com/idbac/maldidb/blob/master/mdb/media/search2.png "")
+
+Search results with top scores per query
+![Search results with top scores per query](https://github.com/idbac/maldidb/blob/master/mdb/media/search3.png "")
+
+Detailed results with similarity scores and distribution graph
+![Detailed results with similarity scores and distribution graph](https://github.com/idbac/maldidb/blob/master/mdb/media/search4.png "")
+
+
+*NCBI Taxonomy Integration*
+
+A late-stage feature: bulk lookup of NCBI taxonomy IDs to enrich metadata.
+
+NCBI taxonomy search—find exact matches
+![NCBI taxonomy search—find exact matches](https://github.com/idbac/maldidb/blob/master/mdb/media/ncbisearch.png "")
+
+Results showing Devosia riboflavina match
+![Results showing Devosia riboflavina match](https://github.com/idbac/maldidb/blob/master/mdb/media/ncbisearch2.png "")
+
+Bulk taxonomy import—paste strain IDs, genera, species
+![Bulk taxonomy import—paste strain IDs, genera, species](https://github.com/idbac/maldidb/blob/master/mdb/media/ncbibulk.png "")
+
+Bulk results—exact and partial matches
+![Bulk results—exact and partial matches](https://github.com/idbac/maldidb/blob/master/mdb/media/ncbibulk4.png "")
+
+
+*What the Screenshots Show*
+
+Taken together, these screenshots illustrate:
+
+* The platform was real—not just diagrams, but working interfaces with real data.
+
+* The workflows matched scientific needs—library management, batch imports, spectral search, taxonomy enrichment.
+
+* The UI was usable—Bootstrap 4, progressive disclosure, clear navigation.
+
+* The integration worked—R API calls, database queries, file processing all happened behind the scenes.
+
+* It was incomplete—some UI elements are rough, workflows could be streamlined, features are half-implemented. That's the nature of a nine-month sprint at the end of a three-year project.
+
+
+   
 ### Conclusion
 
 Building MALDI-DB was a journey from concept to working platform over three years. We learned that scientific software requires deep domain knowledge, thoughtful data modeling, and robust infrastructure. The platform we built can serve as a foundation for community-driven bacterial identification—a resource that didn't exist before.
 
 For researchers building similar platforms, I hope this technical overview helps you navigate the challenges of integrating web frameworks with scientific computing, handling complex data models, and building community features that scientists actually need.
 
-The complete codebase is available at https://github.com/davidshumway/maldidb. We welcome contributions from the community.
+The complete codebase is available at https://github.com/idbac/maldidb. We welcome contributions from the community.
 
 ---
 
