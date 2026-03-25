@@ -638,10 +638,10 @@ volumes:
 
 This approach gave us:
 
-· Reproducible deployments - same stack everywhere
-· Isolation - each service in its own container
-· Scalability - could scale R API independently if needed
-· Development/production parity - same environment locally and on servers
+* Reproducible deployments - same stack everywhere
+* Isolation - each service in its own container
+* Scalability - could scale R API independently if needed
+* Development/production parity - same environment locally and on servers
 
 The requirements.txt shows the core dependencies:
 
