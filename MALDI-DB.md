@@ -711,6 +711,42 @@ The import supports:
 * Error logging for debugging
 * Preservation of all relationships (XML → Spectra, Metadata → Spectra)
 
+#### Experimental Graph Visualization
+
+Beyond the core search and library management features, we experimented with graph-based approaches for visualizing relationships between spectra.
+The idea: treat each spectrum as a node, connect nodes based on similarity scores, and observe how spectra cluster across libraries.
+
+The final chart below compares two libraries (IDs 266 and 267) from Iceland. Each node represents a spectrum, colored by library (green for library 266, orange for 267).
+Node size reflects degree (number of connections). Edge styles encode similarity strength:
+
+* Red, heavy — cosine similarity ≥ 0.99 (very close matches)
+* Solid — 0.95 ≤ similarity < 0.99 (strong matches)
+* Blue, dashed — similarity < 0.95 (weaker connections)
+
+Network visualization comparing two Iceland libraries. Green nodes (library 266) and orange nodes (library 267) show clear separation with only a few cross-library connections.
+![Network visualization comparing two Iceland libraries](images/graph-6.png "")
+
+_Observations_
+
+This visualization, generated from a live API endpoint (/spectra/lib-compare/266,267/), illustrates several useful properties:
+
+* Library separation — Green and orange nodes form largely distinct clusters, suggesting the two libraries contain different bacterial populations.
+* Within-library similarity — Dense connections (red/solid edges) within each cluster indicate strong spectral consistency among spectra from the same library.
+* Outlier detection — A few nodes show weaker connections (blue dashed edges) to their primary cluster, potentially indicating technical replicates with lower similarity or distinct strains.
+* Cross-library relationships — The few connections between green and orange clusters (visible at the cluster boundaries) suggest some spectral similarity across libraries—possibly shared genera or similar protein profiles.
+
+This graph approach, while experimental, points toward intuitive visual tools for:
+
+* Quality control — spotting spectra that don't fit expected clusters
+* Exploratory analysis — discovering relationships between libraries at a glance
+* Community curation — helping users understand library composition before diving into formal identification workflows
+
+    
+
+
+
+    
+
 #### Testing Strategy
 
 We built comprehensive tests for critical paths:
@@ -853,7 +889,7 @@ Expanded search options—library filters, preprocessing
 Search results with top scores per query
 ![Search results with top scores per query](images/search3.png "")
 
-Detailed results with similarity scores and distribution graph
+Detailed results with cosine similarity scores and circular dendrogram.
 ![Detailed results with similarity scores and distribution graph](images/search4.png "")
 
 
