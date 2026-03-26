@@ -785,6 +785,20 @@ Tests covered:
 
 The tests.py in the accounts app shows thorough testing of the social features, ensuring the platform's community aspects worked reliably.
 
+#### Hosting on Mass Open Cloud
+
+The platform was deployed on the Mass Open Cloud (MOC) Kaizen OpenStack cluster, a research cloud operated by Boston University, Northeastern University, and Harvard.
+This gave us the flexibility to run the full stack: Django web app, PostgreSQL, Redis, and the R plumber API, all containerized and orchestrated with Docker Compose on OpenStack instances.
+
+Using MOC was a deliberate choice. We wanted:
+
+* Reproducibility — containers on OpenStack meant the stack could be recreated anywhere
+* No vendor lock-in — avoiding AWS, Google Cloud, or Azure kept the project aligned with academic values
+* Community — MOC's mission of supporting research aligned with MALDI-DB's mission of supporting open science
+
+In July 2022, we received notice that the MOC Kaizen cluster would be decommissioned.
+The option to migrate to the New England Research Cloud (NERC) existed, but with the project no longer active, we let the instances shut down.
+
 #### Lessons Learned
 
 What Worked Well
