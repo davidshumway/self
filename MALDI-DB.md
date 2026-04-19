@@ -855,14 +855,14 @@ Registration form—simple, with standard fields
 Users could create libraries, import data from IDBac SQLite files, and manage metadata.
 
 Library list view with spectra counts and privacy settings
-![Library list view with spectra counts and privacy settings](images/manage1.png "")
+![Library list view with spectra counts and privacy settings](images/manage1.png "Library-1")
 
 Creating a new library—privacy and quality ratings visible
-![Creating a new library—privacy and quality ratings visible](images/newlibrary.png "")
+![Creating a new library—privacy and quality ratings visible](images/newlibrary.png "Library-2")
 
 
 Library detail view with collapse option
-![](images/libraries2.png "")
+![](images/libraries2.png "Library-3")
 
 
 *Data Import*
@@ -870,7 +870,7 @@ Library detail view with collapse option
 The SQLite import pipeline handled real R01 data—13+ databases, thousands of spectra, with progress tracking.
 
 SQLite import interface—single file or batch import from a known directory
-![SQLite import interface—single file or batch import from a known directory](images/newsqlite.png "")
+![SQLite import interface—single file or batch import from a known directory](images/newsqlite.png "SQLite")
 
 
 *File Upload*
@@ -878,16 +878,16 @@ SQLite import interface—single file or batch import from a known directory
 Users could upload mzML/mzXML files with progress indicators and preprocessing options.
 
 Initial upload view
-![Initial upload view](images/fileupload2.png "")
+![Initial upload view](images/fileupload2.png "File Upload 1")
 
 File selection pre-upload
-![File selection pre-upload](images/fileupload2.png "")
+![File selection pre-upload](images/fileupload2.png "File Upload 2")
 
 Expanded options—library selection, preprocessing
-![Expanded options—library selection, preprocessing](images/fileupload3.png "")
+![Expanded options—library selection, preprocessing](images/fileupload3.png "File Upload 3")
 
 Upload queue with file listing
-![Upload queue with file listing](images/uploads1.png "")
+![Upload queue with file listing](images/uploads1.png "Upload Queue")
 
 
 *Spectral Search*
@@ -895,16 +895,16 @@ Upload queue with file listing
 The core scientific feature: upload an unknown spectrum and find matches in the database.
 
 Search—start with file upload
-![Search—start with file upload](images/search1.png "")
+![Search—start with file upload](images/search1.png "Search 1")
 
 Expanded search options—library filters, preprocessing
-![Expanded search options—library filters, preprocessing](images/search2.png "")
+![Expanded search options—library filters, preprocessing](images/search2.png "Search 2")
 
 Search results with top scores per query
-![Search results with top scores per query](images/search3.png "")
+![Search results with top scores per query](images/search3.png "Search 3")
 
 Detailed results with cosine similarity scores and circular dendrogram.
-![Detailed results with similarity scores and distribution graph](images/search4.png "")
+![Detailed results with similarity scores and distribution graph](images/search4.png "Search 4")
 
 
 *NCBI Taxonomy Integration*
@@ -912,16 +912,16 @@ Detailed results with cosine similarity scores and circular dendrogram.
 A late-stage feature: bulk lookup of NCBI taxonomy IDs to enrich metadata.
 
 NCBI taxonomy search—find exact matches
-![NCBI taxonomy search—find exact matches](images/ncbisearch.png "")
+![NCBI taxonomy search—find exact matches](images/ncbisearch.png "NCBI1")
 
 Results showing Devosia riboflavina match
-![Results showing Devosia riboflavina match](images/ncbisearch2.png "")
+![Results showing Devosia riboflavina match](images/ncbisearch2.png "NCBI2")
 
 Bulk taxonomy import—paste strain IDs, genera, species
-![Bulk taxonomy import—paste strain IDs, genera, species](images/ncbibulk.png "")
+![Bulk taxonomy import—paste strain IDs, genera, species](images/ncbibulk.png "NCBI3")
 
 Bulk results—exact and partial matches
-![Bulk results—exact and partial matches](images/ncbibulk4.png "")
+![Bulk results—exact and partial matches](images/ncbibulk4.png "NCBI4")
 
 
 *What the Screenshots Show*
