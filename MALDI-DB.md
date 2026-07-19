@@ -686,15 +686,30 @@ The requirements.txt shows the core dependencies:
 
 ```
 Django==3.1
-Pillow==6.0.0
-django-tables2==2.3.1
+Pillow
+pytz
+sqlparse
+django-tables2
+dj_database_url
 django-filter
 django-bootstrap4
-django-autocomplete-light
+sklearn
+django-jquery
+psycopg2
 psycopg2-binary
-gunicorn
+django-extensions
+django-autocomplete-light
 pandas
 requests
+pydotplus
+djangorestframework
+channels
+websocket-client
+uvloop
+daphne
+websockets
+django-markdown
+django-markdownx
 ```
 
 #### Data Import Pipeline
