@@ -41,7 +41,7 @@ We chose Django for several reasons that proved essential for a scientific platf
 4. Security - Built-in protections for authentication, CSRF, XSS, and SQL injection are essential for a platform that might eventually hold sensitive research data.
 5. Admin interface - The automatic admin interface was invaluable for debugging and giving the team direct data access during development.
 
-The models.py tells the story: 15+ models capturing spectra, metadata, libraries, user tasks, and experimental context. Each model reflects real scientific concepts from the IDBac R package that the domain scientists had already developed.
+The models.py tells the story: 25+ models capturing spectra, metadata, libraries, user tasks, and experimental context. Each model reflects real scientific concepts from the IDBac R package that the domain scientists had already developed.
 
 ## The Data Model Challenge
 
@@ -1001,7 +1001,7 @@ What We'd Do Differently
 
 The complete platform includes:
 
-* 15+ Django models capturing the scientific domain
+* 25+ Django models capturing the scientific domain
 * R integration via plumber API with MALDIquant and IDBacApp
 * Async task queue with progress tracking
 * AJAX file uploads with progress indicators
