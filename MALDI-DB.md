@@ -8,9 +8,9 @@ Last updated July 19, 2026
 
 #### Introduction
 
-In 2018, our team set out to build MALDI-DB—a web platform for bacterial identification using MALDI-TOF mass spectrometry. The goal was ambitious: create a community-driven repository where researchers could upload, share, and analyze bacterial protein spectra, with integrated machine learning workflows for identification. Think of it as an online version of IDBac, but with a centralized repository and collaborative features that didn't exist in the scientific community.
+In 2018, our team set out to build MALDI-DB, a web platform for bacterial identification using MALDI-TOF mass spectrometry. The goal was ambitious: create a community-driven repository where researchers could upload, share, and analyze bacterial protein spectra, with integrated machine learning workflows for identification. Think of it as an online version of IDBac, but with a centralized repository and collaborative features that didn't exist in the scientific community.
 
-The platform was built during a development burst from December 2020 to September 2021—roughly nine months of active coding at the tail end of a three-year project. During that time, we built: a Django backend with PostgreSQL, R integration for scientific computing, Docker deployment, and a thoughtful data model capturing the complexity of mass spectrometry experiments. This post walks through the technical architecture, the decisions we made, and the lessons learned.
+The platform was built during a development burst from December 2020 to August 2021, roughly eight months of active coding at the tail end of a three-year project. During that time, we built: a Django backend with PostgreSQL, R integration for scientific computing, Docker deployment, and a thoughtful data model capturing the complexity of mass spectrometry experiments. This post walks through the technical architecture, the decisions we made, and the lessons learned.
 
 #### The Architecture
 
@@ -119,7 +119,7 @@ class Metadata(models.Model):
     dna_16s
 ```
 
-The Metadata model captures the biological context that makes spectra meaningful. This level of detail—down to cultivation media and temperature—is essential for reproducibility. A spectrum without its experimental context is nearly useless for future researchers trying to replicate or build upon findings.
+The Metadata model captures the biological context that makes spectra meaningful. This level of detail, down to cultivation media and temperature, is essential for reproducibility. A spectrum without its experimental context is nearly useless for future researchers trying to replicate or build upon findings.
 
 #### R Integration: Two Approaches
 
@@ -194,7 +194,7 @@ function(req, id, ids) {
 
 Pros:
 
-* Isolated process—R crashes don't take down Django
+* Isolated process, i.e. R crashes don't take down Django
 * Can scale independently
 * Better memory management
 * Clean separation of concerns
@@ -558,7 +558,7 @@ function upload(event) {
 }
 ```
 
-This gives users immediate feedback on upload progress—critical for large mzML files that can be hundreds of megabytes.
+This gives users immediate feedback on upload progress, critical for large mzML files that can be hundreds of megabytes.
 
 Custom File Input Styling
 
@@ -772,16 +772,16 @@ _Observations_
 
 This visualization, generated from a live API endpoint (/spectra/lib-compare/266,267/), illustrates several useful properties:
 
-* Library separation — Green and orange nodes form largely distinct clusters, suggesting the two libraries contain different bacterial populations.
-* Within-library similarity — Dense connections (red/solid edges) within each cluster indicate strong spectral consistency among spectra from the same library.
-* Outlier detection — A few nodes show weaker connections (blue dashed edges) to their primary cluster, potentially indicating technical replicates with lower similarity or distinct strains.
-* Cross-library relationships — The few connections between green and orange clusters (visible at the cluster boundaries) suggest some spectral similarity across libraries—possibly shared genera or similar protein profiles.
+* Library separation: Green and orange nodes form largely distinct clusters, suggesting the two libraries contain different bacterial populations.
+* Within-library similarity: Dense connections (red/solid edges) within each cluster indicate strong spectral consistency among spectra from the same library.
+* Outlier detection: A few nodes show weaker connections (blue dashed edges) to their primary cluster, potentially indicating technical replicates with lower similarity or distinct strains.
+* Cross-library relationships: The few connections between green and orange clusters (visible at the cluster boundaries) suggest some spectral similarity across libraries—possibly shared genera or similar protein profiles.
 
 This graph approach, while experimental, points toward intuitive visual tools for:
 
-* Quality control — spotting spectra that don't fit expected clusters
-* Exploratory analysis — discovering relationships between libraries at a glance
-* Community curation — helping users understand library composition before diving into formal identification workflows
+* Quality control: spotting spectra that don't fit expected clusters
+* Exploratory analysis: discovering relationships between libraries at a glance
+* Community curation: helping users understand library composition before diving into formal identification workflows
 
     
 
@@ -821,8 +821,6 @@ Tests covered:
 * User authentication and registration
 * Profile editing
 * Follower relationships
-* Data import workflows (though these were harder to test automatically)
-* Search functionality
 * Model constraints and validation
 
 The tests.py in the accounts app shows thorough testing of the social features, ensuring the platform's community aspects worked reliably.
@@ -834,9 +832,9 @@ This gave us the flexibility to run the full stack: Django web app, PostgreSQL, 
 
 Using MOC was a deliberate choice. We wanted:
 
-* Reproducibility — containers on OpenStack meant the stack could be recreated anywhere
-* No vendor lock-in — avoiding AWS, Google Cloud, or Azure kept the project aligned with academic values
-* Community — MOC's mission of supporting research aligned with MALDI-DB's mission of supporting open science
+* Reproducibility: Containers on OpenStack meant the stack could be recreated anywhere
+* No vendor lock-in: Avoiding AWS, Google Cloud, or Azure kept the project aligned with academic values
+* Community: MOC's mission of supporting research aligned with MALDI-DB's mission of supporting open science
 
 In July 2022, we received notice that the MOC Kaizen cluster would be decommissioned.
 The option to migrate to the New England Research Cloud (NERC) existed, but with the project no longer active, we let the instances shut down.
@@ -845,21 +843,21 @@ The option to migrate to the New England Research Cloud (NERC) existed, but with
 
 What Worked Well
 
-1. Separating R into a service - The plumber API proved more robust than in-process rpy2 for large computations. It also made it easier to update R packages independently.
-2. Task tracking with UserTask/UserTaskStatus - This gave users visibility into long-running operations and helped debug issues in production. The extra text field was invaluable for capturing error details.
-3. Docker from day one - Made onboarding new developers trivial and ensured consistent environments. The entrypoint.sh script handling migrations automatically saved countless manual steps.
-4. Django's ecosystem - django-tables2 saved months of table rendering code. django-filter handled complex query building. django-autocomplete-light made the cascading taxonomy filters possible with minimal JavaScript.
-5. Abstract base classes - The AbstractSpectra pattern reduced code duplication and ensured consistency across Spectra, CollapsedSpectra, and SearchSpectra.
-6. Progressive disclosure in UI - The accordion design kept the interface manageable while providing access to advanced features when needed.
+1. Separating R into a service: The plumber API proved more robust than in-process rpy2 for large computations. It also made it easier to update R packages independently.
+2. Task tracking with UserTask/UserTaskStatus: This gave users visibility into long-running operations and helped debug issues in production. The extra text field was invaluable for capturing error details.
+3. Docker from day one: Made onboarding new developers trivial and ensured consistent environments. The entrypoint.sh script handling migrations automatically saved countless manual steps.
+4. Django's ecosystem: django-tables2 saved months of table rendering code. django-filter handled complex query building. django-autocomplete-light made the cascading taxonomy filters possible with minimal JavaScript.
+5. Abstract base classes: The AbstractSpectra pattern reduced code duplication and ensured consistency across Spectra, CollapsedSpectra, and SearchSpectra.
+6. Progressive disclosure in UI: The accordion design kept the interface manageable while providing access to advanced features when needed.
 
 What We'd Do Differently
 
-1. Async from the start - We started with synchronous views, then added threading, then considered Celery. Begin with Celery for long-running tasks to avoid refactoring later.
-2. API-first design - Building a REST API alongside the web views would have made integration with external tools easier. The plumber API was a good start, but a full Django REST Framework layer would have been cleaner.
-3. More comprehensive error handling - Real-world data is unpredictable. More validation and error recovery would help. The 'na' in row[4].lower() check caught many issues, but there were more.
-4. Better monitoring - With separate services (Django, PostgreSQL, R API), we needed better logging and metrics.
-5. User testing earlier - The interface worked, but user feedback would have refined workflows. The cascading taxonomy filters, for example, could have been simplified based on real usage.
-6. Versioned API for R services - The plumber API endpoints (/binPeaks, /cosine) didn't have versioning. As algorithms improved, we'd need to support both old and new versions.
+1. Async from the start: We started with synchronous views, then added threading, then considered Celery. Begin with Celery for long-running tasks to avoid refactoring later.
+2. API-first design: Building a REST API alongside the web views would have made integration with external tools easier. The plumber API was a good start, but a full Django REST Framework layer would have been cleaner.
+3. More comprehensive error handling: Real-world data is unpredictable. More validation and error recovery would help. The 'na' in row[4].lower() check caught many issues, but there were more.
+4. Better monitoring: With separate services (Django, PostgreSQL, R API), we needed better logging and metrics.
+5. User testing earlier: The interface worked, but user feedback would have refined workflows. The cascading taxonomy filters, for example, could have been simplified based on real usage.
+6. Versioned API for R services: The plumber API endpoints (/binPeaks, /cosine) didn't have versioning. As algorithms improved, we'd need to support both old and new versions.
 
 #### The Codebase Today
 
@@ -984,7 +982,7 @@ Taken together, these screenshots illustrate:
    
 ### Conclusion
 
-Building MALDI-DB was a journey from concept to working platform over three years. We learned that scientific software requires deep domain knowledge, thoughtful data modeling, and robust infrastructure. The platform we built can serve as a foundation for community-driven bacterial identification—a resource that didn't exist before.
+Building MALDI-DB was a journey from concept to working platform over three years. We learned that scientific software requires deep domain knowledge, thoughtful data modeling, and robust infrastructure. The platform we built can serve as a foundation for community-driven bacterial identification, a resource that didn't exist before.
 
 For researchers building similar platforms, I hope this technical overview helps you navigate the challenges of integrating web frameworks with scientific computing, handling complex data models, and building community features that scientists actually need.
 
