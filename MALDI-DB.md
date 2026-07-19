@@ -627,9 +627,6 @@ services:
       dockerfile: ./rplumber/Dockerfile
     container_name: rplumber
     command: /app/plumber.R
-    #command: ["/bin/sh", "-c", "
-    #  Rscript /app/plumber.R;
-    #  Rscript /app/start_idbac.R"]
     restart: always
     env_file:
       - project.env
