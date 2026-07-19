@@ -1,4 +1,4 @@
-###  Building MALDI-DB: A Community-Driven Mass Spectrometry Platform
+#  Building MALDI-DB: A Community-Driven Mass Spectrometry Platform
 
 Technical Retrospective
 
@@ -6,13 +6,13 @@ Author: David Shumway
 
 Last updated July 19, 2026
 
-#### Introduction
+## Introduction
 
 In 2018, our team set out to build MALDI-DB, a web platform for bacterial identification using MALDI-TOF mass spectrometry. The goal was ambitious: create a community-driven repository where researchers could upload, share, and analyze bacterial protein spectra, with integrated machine learning workflows for identification. Think of it as an online version of IDBac, but with a centralized repository and collaborative features that didn't exist in the scientific community.
 
 The platform was built during a development burst from December 2020 to August 2021, roughly eight months of active coding at the tail end of a three-year project. During that time, we built: a Django backend with PostgreSQL, R integration for scientific computing, Docker deployment, and a thoughtful data model capturing the complexity of mass spectrometry experiments. This post walks through the technical architecture, the decisions we made, and the lessons learned.
 
-#### The Architecture
+## The Architecture
 
 Overview
 
@@ -31,7 +31,7 @@ The platform consists of several integrated components:
 └─────────────────┘     └──────────────┘     └─────────────────┘
 ```
 
-#### Why Django?
+## Why Django?
 
 We chose Django for several reasons that proved essential for a scientific platform:
 
@@ -43,7 +43,7 @@ We chose Django for several reasons that proved essential for a scientific platf
 
 The models.py tells the story: 15+ models capturing spectra, metadata, libraries, user tasks, and experimental context. Each model reflects real scientific concepts from the IDBac R package that the domain scientists had already developed.
 
-#### The Data Model Challenge
+## The Data Model Challenge
 
 Mass spectrometry data is complex. Each spectrum comes with:
 
@@ -121,7 +121,7 @@ class Metadata(models.Model):
 
 The Metadata model captures the biological context that makes spectra meaningful. This level of detail, down to cultivation media and temperature, is essential for reproducibility. A spectrum without its experimental context is nearly useless for future researchers trying to replicate or build upon findings.
 
-#### R Integration: Two Approaches
+## R Integration: Two Approaches
 
 The IDBac R package already contained mature algorithms for peak processing, binning, and cosine similarity calculations. Our challenge was integrating this existing scientific code with a modern web application. We tried two approaches:
 
@@ -208,7 +208,7 @@ Cons:
 
 We settled on the plumber approach for production. The R service runs on port 7001 in its own Docker container, communicates via JSON, and handles the heavy scientific computing. This architecture proved more robust, especially when processing large datasets where memory usage was unpredictable.
 
-#### Handling Long-Running Tasks
+## Handling Long-Running Tasks
 
 Scientific workflows aren't instant. A user might:
 
@@ -283,7 +283,170 @@ def idbac_sqlite_insert(request, tmpForm, uploadFile, user_task):
 
 This simple decorator lets us mark any function as async. The daemon=True ensures threads don't block server shutdown. For production, we would migrate to Celery for better reliability, but this served well during development.
 
-#### User Management and Community Features
+
+
+
+
+## Websocket Usage in maldidb-1
+
+### Architecture Overview
+
+The application uses **two complementary websocket patterns** to enable real-time communication for long-running operations:
+
+1. **Django Channels Consumer** - Server-to-client messaging hub for UI updates
+2. **Direct WebSocket Connections** - Worker-to-hub communication for background tasks
+
+---
+
+### Django Channels Consumer
+
+#### Implementation
+Located in `mdb/chat/consumer.py`, the `DashConsumer` class extends `AsyncJsonWebsocketConsumer` from Django Channels.
+
+#### Connection Management
+- Clients connect to the `'dashboard'` websocket group
+- Each connection receives a unique `client_id` (UUID) for message routing
+- The consumer maintains a module-level `clients` dictionary mapping `client_id` to consumer instances
+
+#### Message Types and Handlers
+
+##### Spectra Analysis Operations
+- **`library comparison`** - Initiates cosine similarity comparison between two libraries
+- **`library comparison result`** - Routes comparison results back to requesting client
+- **`search existing`** - Searches unknown spectra against an existing reference library
+- **`single score`** - Retrieves full scoring data (dendrogram + similarity scores)
+- **`single score result`** - Sends detailed comparison results with binned peaks and taxonomy
+
+##### File Upload and Processing
+- **`completed preprocessing`** - Notifies client when R preprocessing of spectra files completes
+- **`collapse library`** - Triggers spectrum collapsing/averaging operation
+- **`completed collapsing`** - Returns list of collapsed spectra IDs with metadata
+- **`completed cosine`** - Sends cosine similarity results after library-wide comparisons
+
+##### NCBI Taxonomy Alignment
+- **`align`** - Initiates automatic NCBI taxonomy database search for strain identification
+- **`align status`** - Sends progress updates during alignment search (e.g., "Searching 5 of 1000")
+- **`completed align`** - Returns exact and partial matches from NCBI
+- **`manual_align`** - Allows manual specification of genus/species for alignment
+- **`completed manual align`** - Returns results of manual alignment attempt
+- **`save align`** / **`save manual align`** - Confirms taxonomic metadata has been persisted to database
+
+---
+
+### Background Task Websocket Communication
+
+#### Pattern and Implementation
+
+Long-running computational tasks are executed in background threads (decorated with `@start_new_thread`) located across multiple modules:
+- `mdb/spectra/wsviews.py`
+- `mdb/spectra_search/views.py`
+- `mdb/ncbitaxonomy/views.py`
+
+These threads establish direct websocket connections to communicate completion status:
+
+```python
+ws = websocket.WebSocket()
+ws.connect('ws://localhost:8000/ws/pollData')
+ws.send(json.dumps({
+  'type': 'message_type',
+  'data': {'client': client_id, ...}
+}))
+ws.close()
+```
+
+#### Background Tasks with Websocket Notifications
+
+| Task | Location | Notification | Payload |
+|------|----------|--------------|---------|
+| **File Preprocessing** | `process_file()` | `completed preprocessing` | upload count, client ID |
+| **Library Collapsing** | `collapse_lib()` | `completed collapsing` | list of collapsed spectra with IDs and strain info |
+| **Cosine Scoring** | `cosine_scores()` | `completed cosine` | top 5 similarity scores, taxonomy, binned peaks |
+| **Single Score Details** | `single_score()` | `single score result` | dendrogram, full binned peaks, complete score ranking |
+| **Library Comparison** | `cosine_score_libraries()` | `library comparison result` | network graph edges with similarity scores |
+| **NCBI Alignment** | `align()` | `align status` (periodic) + `completed align` | progress updates, then exact/partial NCBI matches |
+| **Alignment Persistence** | `save_align()` | `completed save align` | confirmation only |
+| **Manual Alignment** | `manual_align()` | `completed manual align` | results with manual genus/species assignments |
+| **Manual Alignment Save** | `save_manual_align()` | `completed save manual align` | confirmation only |
+
+---
+
+### Data Flow Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ Client (Web Browser)                                        │
+│                                                             │
+│  Initiates request (e.g., "search existing spectra")       │
+└─────────────────────┬───────────────────────────────────────┘
+                      │
+                      ▼
+┌─────────────────────────────────────────────────────────────┐
+│ Django Channels - DashConsumer                              │
+│                                                             │
+│  • Receives message via websocket                          │
+│  • Routes to appropriate background task function           │
+│  • Spawns @start_new_thread function with client_id        │
+│  • Maintains client_id → consumer mapping                   │
+└─────────────────────┬───────────────────────────────────────┘
+                      │
+                      ▼
+┌─────────────────────────────────────────────────────────────┐
+│ Background Thread (Long-Running Computation)                │
+│                                                             │
+│  • Queries database                                        │
+│  • Calls R microservice (plumber:8000) if needed            │
+│  • Processes results                                       │
+│  • Connects to /ws/pollData endpoint                        │
+│  • Sends completion message with client_id                 │
+└─────────────────────┬───────────────────────────────────────┘
+                      │
+                      ▼
+┌─────────────────────────────────────────────────────────────┐
+│ DashConsumer Message Router                                 │
+│                                                             │
+│  • Receives completion message from background task         │
+│  • Looks up client by client_id in clients dict            │
+│  • Routes result back to specific client                    │
+└─────────────────────┬───────────────────────────────────────┘
+                      │
+                      ▼
+┌─────────────────────────────────────────────────────────────┐
+│ Client Receives Update (No Page Reload)                     │
+│                                                             │
+│  • WebSocket receives message                              │
+│  • JavaScript updates UI with results                       │
+│  • User sees dendrogram, scores, or status in real-time     │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### Key Design Patterns
+
+#### Client Identification
+Each websocket connection generates a unique UUID (`client_id`) on initial connection. This ID is:
+- Sent back to the client in the `connect` handler
+- Included in every message the client sends
+- Used to route responses back to the originating client
+- Essential for handling concurrent requests from multiple users
+
+#### Thread Safety
+Background tasks use the `@start_new_thread` decorator to avoid blocking the main Django/Channels event loop. Each thread:
+- Creates its own websocket connection to `/ws/pollData`
+- Sends results via JSON
+- Closes the connection after sending
+
+#### Asynchronous UI Updates
+This architecture enables:
+- Users to initiate multiple analyses simultaneously
+- Real-time progress feedback during long computations
+- No page refreshes required for completion notifications
+- Responsive UI while waiting for results (e.g., dendrogram generation, cosine similarity calculations)
+
+
+
+
+## User Management and Community Features
 
 A community-driven database needs social features. We built:
 
@@ -300,7 +463,7 @@ class LabGroup(models.Model):
 
 This models real research groups. Owners can manage the lab, members can contribute data. The platform automatically adds owners as members on creation (though the commented signal handler shows we had to work through some Django quirks).
 
-#### Privacy Controls at Multiple Levels
+## Privacy Controls at Multiple Levels
 
 ```python
 PUBLIC = 'PB'
@@ -320,7 +483,7 @@ privacy_level = models.CharField(
 
 Researchers need control over their data. Some projects are pre-publication and must remain private. Others can be shared immediately. By making privacy granular (at the library and individual spectra level), we give users flexibility while encouraging sharing.
 
-#### Quality Ratings Inspired by GNPS
+## Quality Ratings Inspired by GNPS
 
 ```python
 GOLD = 'GO'
@@ -340,7 +503,7 @@ quality_rating = models.CharField(
 
 Not all data is equal. Gold standards are manually curated, silver comes from published studies, bronze is community-submitted. This tiered system, borrowed from GNPS, lets users trust results appropriately.
 
-#### ORCID Integration for Academic Credit
+## ORCID Integration for Academic Credit
 
 ```python
 user_firstname_lastname = models.CharField(max_length=255, blank=True)
@@ -351,7 +514,7 @@ pi_orcid = models.CharField(max_length=255, blank=True)
 
 In academia, credit matters. Storing ORCIDs ensures contributors can be properly cited and tracked. This also helps with attribution when data gets reused in publications.
 
-#### User Profiles with Social Features
+## User Profiles with Social Features
 
 The profile.html template shows a clean user profile interface:
 
@@ -393,7 +556,7 @@ class User(AbstractUser):
 
 This enables researchers to follow other labs' work, building a collaborative network around the data.
 
-#### Search and Discovery
+## Search and Discovery
 
 The search interface needed to handle complex queries: taxonomic filters, instrument parameters, and spectral similarity.
 
@@ -481,7 +644,7 @@ class CosineSearchTable(tables.Table):
 
 This approach lets users see exactly how similar each match is to their query.
 
-#### User Interface Design
+## User Interface Design
 
 The UI needed to be approachable for microbiologists who might not be bioinformatics experts. The basic_search.html template shows our design philosophy:
 
@@ -522,44 +685,6 @@ Progressive Disclosure
 
 This accordion design keeps the interface simple for basic use while making advanced options available when needed.
 
-AJAX File Upload with Progress
-
-```javascript
-function upload(event) {
-  var template = '<div class="modal fade" id="file-progress-modal">...';
-  var modal = $(template);
-  modal.modal({backdrop: 'static', keyboard: false});
-  
-  $.ajax({
-    xhr: function() {
-      var xhr = new window.XMLHttpRequest();
-      xhr.upload.addEventListener("progress", function(evt){
-        if (evt.lengthComputable) {
-          var percent = 100 * evt.loaded / evt.total;
-          modal.find('.progress-bar').text(percent + '%').css('width', percent + '%');
-        }
-      });
-      return xhr;
-    },
-    data: new FormData(this),
-    url: "\{\% url 'chat:ajax_upload' \%\}",
-    type: 'POST',
-    processData: false,
-    contentType: false,
-    success: function(response) {
-      modal.modal('hide');
-      // Handle success
-    },
-    error: function(response) {
-      // Show error messages
-    }
-  });
-  return false;
-}
-```
-
-This gives users immediate feedback on upload progress, critical for large mzML files that can be hundreds of megabytes.
-
 Custom File Input Styling
 
 ```javascript
@@ -571,7 +696,7 @@ $(".custom-file-input").on("change", function() {
 
 Bootstrap's custom file input doesn't show the selected filename by default. This simple fix improves usability dramatically.
 
-#### Deployment with Docker
+## Deployment with Docker
 
 The entrypoint.sh script and docker-compose configuration made deployment reproducible:
 
@@ -712,7 +837,7 @@ django-markdown
 django-markdownx
 ```
 
-#### Data Import Pipeline
+## Data Import Pipeline
 
 A major feature was importing IDBac SQLite databases. We needed to bring IDBac SQLite data into PostgreSQL while preserving all metadata.
 
@@ -765,7 +890,7 @@ The import supports:
 * Error logging for debugging
 * Preservation of all relationships (XML → Spectra, Metadata → Spectra)
 
-#### Experimental Graph Visualization
+## Experimental Graph Visualization
 
 Beyond the core search and library management features, we experimented with graph-based approaches for visualizing relationships between spectra.
 The idea: treat each spectrum as a node, connect nodes based on similarity scores, and observe how spectra cluster across libraries.
@@ -801,7 +926,7 @@ This graph approach, while experimental, points toward intuitive visual tools fo
 
     
 
-#### Testing Strategy
+## Testing Strategy
 
 We built comprehensive tests for critical paths:
 
@@ -837,7 +962,7 @@ Tests covered:
 
 The tests.py in the accounts app shows thorough testing of the social features, ensuring the platform's community aspects worked reliably.
 
-#### Hosting on Mass Open Cloud
+## Hosting on Mass Open Cloud
 
 The platform was deployed on the Mass Open Cloud (MOC) Kaizen OpenStack cluster, a research cloud operated by Boston University, Northeastern University, and Harvard.
 This gave us the flexibility to run the full stack: Django web app, PostgreSQL, and the R plumber API, all containerized and orchestrated with Docker Compose on OpenStack instances.
@@ -851,7 +976,7 @@ Using MOC was a deliberate choice. We wanted:
 In July 2022, we received notice that the MOC Kaizen cluster would be decommissioned.
 The option to migrate to the New England Research Cloud (NERC) existed, but with the project no longer active, we let the instances shut down.
 
-#### Lessons Learned
+## Lessons Learned
 
 What Worked Well
 
@@ -861,6 +986,7 @@ What Worked Well
 4. Django's ecosystem: django-tables2 saved months of table rendering code. django-filter handled complex query building. django-autocomplete-light made the cascading taxonomy filters possible with minimal JavaScript.
 5. Abstract base classes: The AbstractSpectra pattern reduced code duplication and ensured consistency across Spectra, CollapsedSpectra, and SearchSpectra.
 6. Progressive disclosure in UI: The accordion design kept the interface manageable while providing access to advanced features when needed.
+7. WebSockets for long-running operations: Django Channels enabled real-time feedback on background tasks (preprocessing, cosine scoring, taxonomy alignment) without polling or page refreshes. The client_id routing pattern allowed concurrent user requests to be handled independently, and the separation between the Channels consumer and background worker threads kept the event loop responsive while R services and database queries ran in parallel.
 
 What We'd Do Differently
 
@@ -871,7 +997,7 @@ What We'd Do Differently
 5. User testing earlier: The interface worked, but user feedback would have refined workflows. The cascading taxonomy filters, for example, could have been simplified based on real usage.
 6. Versioned API for R services: The plumber API endpoints (/binPeaks, /cosine) didn't have versioning. As algorithms improved, we'd need to support both old and new versions.
 
-#### The Codebase Today
+## The Codebase Today
 
 The complete platform includes:
 
@@ -886,7 +1012,7 @@ The complete platform includes:
 * Docker deployment with docker-compose
 * Responsive UI using Bootstrap 4
 
-#### The Platform in Action
+## The Platform in Action
 
 The following screenshots show MALDI-DB as it existed in mid-2021—functional, usable, and very much still in progress. The UI is Bootstrap 4, the workflows reflect real scientific needs, and the data is real.
 
@@ -992,7 +1118,7 @@ Taken together, these screenshots illustrate:
 
 
    
-### Conclusion
+## Conclusion
 
 Building MALDI-DB was a journey from concept to working platform over three years. We learned that scientific software requires deep domain knowledge, thoughtful data modeling, and robust infrastructure. The platform we built can serve as a foundation for community-driven bacterial identification, a resource that didn't exist before.
 
