@@ -287,7 +287,7 @@ This simple decorator lets us mark any function as async. The daemon=True ensure
 
 
 
-## Websocket Usage in maldidb-1
+## Websocket Usage in maldidb
 
 ### Architecture Overview
 
