@@ -4,7 +4,7 @@ Technical Retrospective
 
 Author: David Shumway
 
-Last updated March 25, 2026
+Last updated July 19, 2026
 
 #### Introduction
 
@@ -20,14 +20,14 @@ The platform consists of several integrated components:
 
 ```
 ┌─────────────────┐     ┌──────────────┐     ┌─────────────────┐
-│   Django App    │────▶│  PostgreSQL  │     │   R Services    │
-│  (Web/Models)   │◀────│   Database   │     │  (plumber/Rpy2) │
+│   Django App    │───▶│  PostgreSQL  │     │   R Services    │
+│  (Web/Models)   │◀───│   Database   │     │  (plumber/Rpy2) │
 └─────────────────┘     └──────────────┘     └─────────────────┘
          │                       │                      │
          ▼                       ▼                      ▼
 ┌─────────────────┐     ┌──────────────┐     ┌─────────────────┐
-│   Celery Tasks  │     │   File Store │     │   MALDIquant    │
-│  (Long-running) │     │  (User uploads)│    │  IDBacApp       │
+│   Thread()      │     │   File Store │     │   MALDIquant    │
+│  (Long-running) │     │(User uploads)│     │  IDBacApp       │
 └─────────────────┘     └──────────────┘     └─────────────────┘
 ```
 
@@ -600,40 +600,82 @@ The Docker Compose setup orchestrated all services:
 ```yaml
 version: '3'
 services:
+  volume_configurer:
+    image: busybox
+    volumes:
+      - shared:/shared:z
+      - static:/static:z
+    command: ["/bin/sh", "-c", "
+      mkdir -p /static;
+      chmod -R 777 /static;
+      mkdir -p /shared/sync;
+      chmod -R 777 /shared/sync;
+      echo STARTED > /shared/sync/volumesetter && chmod a+r /shared/sync/volumesetter"]
+  db:
+    container_name: postgresdb
+    image: postgres:latest
+    restart: always
+    env_file:
+     - project.env
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres-data1:/var/lib/postgresql/data1:z
+  plumber:
+    build:
+      context: ./
+      dockerfile: ./rplumber/Dockerfile
+    container_name: rplumber
+    command: /app/plumber.R
+    #command: ["/bin/sh", "-c", "
+    #  Rscript /app/plumber.R;
+    #  Rscript /app/start_idbac.R"]
+    restart: always
+    env_file:
+      - project.env
+    ports:
+      - "127.0.0.1:7002:8000"
+    volumes:
+      - ./rplumber:/app:z
+      - shared:/app/uploads:z
   web:
-    build: .
-    volumes:
-      - ./media:/app/media
-      - /data/r01:/home/app/r01data:ro
+    build:
+      context: ./
+      dockerfile: ./mdb/Dockerfile
+    container_name: django
+    command: >
+      daphne mdb.asgi:application -b 0.0.0.0 -p 8000
+    env_file:
+      - project.env
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000" # 8000
     depends_on:
-      - postgresdb
-      - redis
-    env_file:
-      - project.env
-      
-  postgresdb:
-    image: postgres:12
+      - db
+      - plumber
     volumes:
-      - postgres_data:/var/lib/postgresql/data/
-    env_file:
-      - project.env
-      
-  redis:
-    image: redis:alpine
-    
-  r-api:
-    build: ./r-api
+      - ./mdb:/home/app/web/:z
+      - static:/home/app/web/static/:z
+      - shared:/uploads/:z
+    environment:
+      PYTHONUNBUFFERED: 1  # better printing
+  nginx:
+    container_name: nginx
+    image: nginx
+    restart: always
     ports:
-      - "7001:8000"
-    env_file:
-      - project.env
+      - 80:80
+    volumes:
+      - ./nginx:/etc/nginx/conf.d:z
+      - static:/home/app/web/static/:z
     depends_on:
-      - postgresdb
-      
+      - web
+      - db
+      - plumber
+
 volumes:
-  postgres_data:
+  postgres-data1:
+  static: 
+  shared:
 ```
 
 This approach gave us:
@@ -788,7 +830,7 @@ The tests.py in the accounts app shows thorough testing of the social features, 
 #### Hosting on Mass Open Cloud
 
 The platform was deployed on the Mass Open Cloud (MOC) Kaizen OpenStack cluster, a research cloud operated by Boston University, Northeastern University, and Harvard.
-This gave us the flexibility to run the full stack: Django web app, PostgreSQL, Redis, and the R plumber API, all containerized and orchestrated with Docker Compose on OpenStack instances.
+This gave us the flexibility to run the full stack: Django web app, PostgreSQL, and the R plumber API, all containerized and orchestrated with Docker Compose on OpenStack instances.
 
 Using MOC was a deliberate choice. We wanted:
 
@@ -815,7 +857,7 @@ What We'd Do Differently
 1. Async from the start - We started with synchronous views, then added threading, then considered Celery. Begin with Celery for long-running tasks to avoid refactoring later.
 2. API-first design - Building a REST API alongside the web views would have made integration with external tools easier. The plumber API was a good start, but a full Django REST Framework layer would have been cleaner.
 3. More comprehensive error handling - Real-world data is unpredictable. More validation and error recovery would help. The 'na' in row[4].lower() check caught many issues, but there were more.
-4. Better monitoring - With separate services (Django, PostgreSQL, Redis, R API), we needed better logging and metrics. Something like Sentry for errors and Prometheus for metrics would have helped.
+4. Better monitoring - With separate services (Django, PostgreSQL, R API), we needed better logging and metrics.
 5. User testing earlier - The interface worked, but user feedback would have refined workflows. The cascading taxonomy filters, for example, could have been simplified based on real usage.
 6. Versioned API for R services - The plumber API endpoints (/binPeaks, /cosine) didn't have versioning. As algorithms improved, we'd need to support both old and new versions.
 
