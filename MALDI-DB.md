@@ -4,7 +4,7 @@ Technical Retrospective
 
 Author: David Shumway
 
-Last updated July 19, 2026
+Last updated July 22, 2026
 
 ## Introduction
 
@@ -1114,7 +1114,7 @@ Taken together, these screenshots illustrate:
 
 * The integration worked—R API calls, database queries, file processing all happened behind the scenes.
 
-* It was incomplete—some UI elements are rough, workflows could be streamlined, features are half-implemented. That's the nature of a nine-month sprint at the end of a three-year project.
+* It was incomplete—some UI elements are rough, workflows could be streamlined, features are half-implemented. That's the nature of an eight-month sprint at the end of a three-year project.
 
 
    
