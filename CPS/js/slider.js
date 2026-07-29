@@ -7,11 +7,21 @@ var loadSlider = function (sliderId, cb) {
         max: 2019,
         step: 1,
         slide: function (event, ui) {
-            $("#year").val(ui.value);
+            var x = document.getElementsByClassName('year');
+            for (var i=0; i<x.length; i++) {
+                x[i].innerText = ui.value;
+            }
+            // callback
             cb(ui.value);
         }
     });
-    $("#year").val($("#" + sliderId).slider("value"));
+    
+    function initValues() {
+        var x = document.getElementsByClassName('year');
+        for (var i=0; i<x.length; i++) {
+            x[i].innerText = 2019;
+        }
+    }
 
     function setSliderTicks() {
         var $slider = $("#" + sliderId);
@@ -27,4 +37,5 @@ var loadSlider = function (sliderId, cb) {
     }
 
     setSliderTicks();
+    initValues();
 };

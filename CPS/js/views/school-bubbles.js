@@ -1,10 +1,21 @@
 ﻿// Credits: https://github.com/UsabilityEtc/d3-country-bubble-chart
-var bubbleCtrl = bubbleCtrl || new schoolBubbleController();
 
 var createBubbleChart = function () {
-    var currentYear = 2019;
     var currentDemography = '';  // None indicates All.
-    var schools = bubbleCtrl.getSchoolsByYear(currentYear);
+    
+    if (!bubbleCtrl || !bubbleCtrl.getSchoolsByYear) { // Failed to load??
+        console.log('WARN(!!!): window.onload fails!');
+        try {
+            console.log(bubbleCtrl);
+            console.log(bubbleCtrl.getSchoolsByYear);
+        } catch(e) {
+            console.log('e:',e);
+        }
+        d3.select('#main-view-bubble').append('span').text('(Failed to load view)');
+        return;
+    }
+    
+    var schools = bubbleCtrl.getSchoolsByYear(2019); // Start with 2019
     var schoolNetworkNames = bubbleCtrl.getSchoolNetworksDict(schools);
     var populations = schools.map(s => +s.totalStudents);
     var meanPopulation = d3.mean(populations),      // TODO: use
@@ -13,11 +24,33 @@ var createBubbleChart = function () {
         populationScaleY;
 
     var schoolNetworks = d3.set(schools.map(function (s) { return s.network; }));
-    var schoolNetworkColorScale = d3.scaleOrdinal(d3.schemeCategory20)
-        .domain(schoolNetworks.values());
-
-    var width = 1200,
-        height = 680;
+    var schoolNetworkColorScale = function(id) {
+        //model.data.schoolFiveYearPopTrend[b.key]
+        var v = [];
+        for (var yearAS=2014; yearAS<=2019; yearAS++) {
+            if (model.data.allSchools[yearAS].hasOwnProperty(id)) {
+                v.push({
+                    year: yearAS,
+                    value: model.data.allSchools[yearAS][id].total,
+                });
+            }
+        }
+        return profile.trendColor(
+          profile.lineRegNormalize(v)
+        );
+    }
+    
+    // Reduce from 1200 x 680
+    var width = d3.select('#main-view-bubble')
+        .node()
+        .getBoundingClientRect().width - 20; // Pad 6
+    var height = d3.select('#main-view-bubble')
+        .node()
+        .getBoundingClientRect().height
+        - d3.select('#main-view-bubble>.row1')
+        .node()
+        .getBoundingClientRect().height - 10;//680*0.5;
+        
     var svg,
         circles,
         circleSize = getCircleSize(populationExtent[1]);
@@ -36,9 +69,6 @@ var createBubbleChart = function () {
     addFillListener();
     addGroupingListeners();
     createDemographyDropdown();
-
-    // Load slider
-    loadSlider("slider-bubble", yearSliderHandler);
 
     function createSVG() {
         svg = d3.select("#bubble-chart")
@@ -67,13 +97,24 @@ var createBubbleChart = function () {
         // Hook demography handler
         $('#demography').on('change', function () {
             currentDemography = $(this).val();
-            schools = currentDemography ? bubbleCtrl.filterStudentsByDemography(currentDemography, currentYear) :
-                bubbleCtrl.getSchoolsByYear(currentYear);
+            schools = currentDemography
+                ? bubbleCtrl.filterStudentsByDemography(currentDemography, yearOpts.currentYear)
+                : bubbleCtrl.getSchoolsByYear(yearOpts.currentYear); // TODO
             recreateChart();
         });
     }
 
     function recreateChart() {
+        width = d3.select('#main-view-bubble') // Update width
+            .node()
+            .getBoundingClientRect().width - 20;
+        height = d3.select('#main-view-bubble')
+            .node()
+            .getBoundingClientRect().height
+            - d3.select('#main-view-bubble>.row1')
+            .node()
+            .getBoundingClientRect().height - 10;//680*0.5;
+            //~ console.log('height',height);
         populations = schools.map(s => +s.totalStudents);
         populationExtent = d3.extent(populations);
         circleSize = getCircleSize(populationExtent[1]);
@@ -98,84 +139,23 @@ var createBubbleChart = function () {
     function getCircleSize(pMax) {
         return {
             'min': 1,
-            'max': pMax < 1500 && schools.length > 400 ? 18 : 30
+            'max': pMax < 1500 && schools.length > 400 ? 6 : 12
         };
     }
 
     function yearSliderHandler(year) {
-        currentYear = year;
-        schools = currentDemography ? bubbleCtrl.filterStudentsByDemography(currentDemography, currentYear) :
-            bubbleCtrl.getSchoolsByYear(currentYear);
+        // currentYear = year;
+        schools = currentDemography
+            ? bubbleCtrl.filterStudentsByDemography(currentDemography, yearOpts.currentYear)
+            : bubbleCtrl.getSchoolsByYear(yearOpts.currentYear);
         schoolNetworkNames = bubbleCtrl.getSchoolNetworksDict(schools);
         schoolNetworks = d3.set(schools.map(function (s) { return s.network; }));
-        schoolNetworkColorScale = d3.scaleOrdinal(d3.schemeCategory20)
-            .domain(schoolNetworks.values());
         d3.select(".schoolNetwork-key").remove();
         toggleschoolNetworkKey(!populationGrouping());
         recreateChart();
     }
 
     function toggleschoolNetworkKey(showschoolNetworkKey) {
-        var keyElementWidth = width / schoolNetworks.values().length; //90,
-        keyElementHeight = 30;
-        var onScreenYOffset = keyElementHeight * 1.5,
-            offScreenYOffset = 100;
-
-        if (d3.select(".schoolNetwork-key").empty()) {
-            createschoolNetworkKey();
-        }
-        var schoolNetworkKey = d3.select(".schoolNetwork-key");
-
-        if (showschoolNetworkKey) {
-            translateschoolNetworkKey("translate(0," + (height - onScreenYOffset) + ")");
-        } else {
-            translateschoolNetworkKey("translate(0," + (height + offScreenYOffset) + ")");
-        }
-
-        function createschoolNetworkKey() {
-            var keyWidth = keyElementWidth * schoolNetworks.values().length;
-            var schoolNetworkKeyScale = d3.scaleBand()
-                .domain(schoolNetworks.values())
-                .range([(width - keyWidth) / 2, (width + keyWidth) / 2]);
-
-            svg.append("g")
-                .attr("class", "schoolNetwork-key")
-                .attr("transform", "translate(0," + (height + offScreenYOffset) + ")")
-                .selectAll("g")
-                .data(schoolNetworks.values())
-                .enter()
-                .append("g")
-                .attr("class", "schoolNetwork-key-element");
-
-            d3.selectAll("g.schoolNetwork-key-element")
-                .append("rect")
-                .attr("width", keyElementWidth)
-                .attr("height", keyElementHeight)
-                .attr("x", function (d) { return schoolNetworkKeyScale(d); })
-                .attr("fill", function (d) { return schoolNetworkColorScale(d); });
-
-            d3.selectAll("g.schoolNetwork-key-element")
-                .append("text")
-                .attr("text-anchor", "middle")
-                .attr("x", function (d) { return schoolNetworkKeyScale(d) + keyElementWidth / 2; })
-                .text(function (d) { return schoolNetworkNames[d]; });
-
-            // The text BBox has non-zero values only after rendering
-            d3.selectAll("g.schoolNetwork-key-element text")
-                .attr("y", function (d) {
-                    var textHeight = this.getBBox().height;
-                    // The BBox.height property includes some extra height we need to remove
-                    var unneededTextHeight = 4;
-                    return ((keyElementHeight + textHeight) / 2) - unneededTextHeight;
-                });
-        }
-
-        function translateschoolNetworkKey(translation) {
-            schoolNetworkKey
-                .transition()
-                .duration(500)
-                .attr("transform", translation);
-        }
     }
 
     function isChecked(elementID) {
@@ -186,8 +166,6 @@ var createBubbleChart = function () {
         circles = svg.selectAll("circle");
         circles.remove();
         circles = null;
-        //svg.remove();
-        //createSVG();
         createCircles();
     }
 
@@ -197,6 +175,9 @@ var createBubbleChart = function () {
             .data(schools)
             .enter()
             .append("circle")
+            //~ .attr('id', function(d) {
+                //~ return 'bubble-circ-'+d.id;
+            //~ })
             .attr("r", function (d) {
                 return circleRadiusScale(d.totalStudents);
             })
@@ -205,22 +186,47 @@ var createBubbleChart = function () {
             })
             .on("mouseout", function (d) {
                 updateschoolInfo();
+            })
+            .style("cursor", "pointer")
+            .on("click", function (d) {
+                schoolProfile.load(
+                  [d.id],
+                  yearOpts.currentYear
+                );
             });
+        
+        circles.exit().remove();
+        
         updateCircles();
 
         function updateschoolInfo(school) {
-            var info = "";
             if (school) {
-                info = [school.schoolName, formatPopulation(school.totalStudents)].join(": ");
+                var info = [school.schoolName, formatPopulation(school.totalStudents)].join(": ");
+                if (school.id && model.data.byId[school.id]
+                    && model.data.byId[school.id]['PopulationSlope (0-1)'])
+                {
+                    var x = model.data.byId[school.id]['PopulationSlope (0-1)'];
+                    info += '<br/>Pop. Trend: ' + ((x >= 0.5) ? 'Rising' : 'Falling');
+                }
+                divToolTip.html(info)
+                  .style('left', (d3.event.pageX) + 'px')
+                  .style('top', (d3.event.pageY - 28) + 'px');
+                divToolTip.transition()
+                  .duration(200)
+                  .style('opacity', 0.95);
+            } else {
+                divToolTip.transition()
+                  .duration(500)
+                  .style('opacity', 0);
             }
-            d3.select("#school-info").html(info);
+            //~ d3.select("#school-info").html(info);
         }
     }
 
     function updateCircles() {
         circles
             .attr("fill", function (d) {
-                return schoolNetworkColorScale(d.network);
+                return schoolNetworkColorScale(d.id);
             });
     }
 
@@ -282,9 +288,10 @@ var createBubbleChart = function () {
         $(forceSimulation.nodes(schools)).unbind();
 
         forceSimulation.nodes(schools)
-            .on("tick", function () {
+            .on("tick", function () { // every tick.
                 circles
                     .attr("cx", function (d) {
+                        //~ console.log('fs d', d);
                         return d.x;
                     })
                     .attr("cy", function (d) {
@@ -318,6 +325,15 @@ var createBubbleChart = function () {
             .force("collide", d3.forceCollide(forceCollide))
             .alphaTarget(0.5)
             .restart();
+        
+        // Bug: The network bubble "bar" chart hangs CPU at 100%
+        //      and never stops! Calling stop() method will stop it.
+        //~ bubbleOpts.fs = forceSimulation;
+        setTimeout(function(d) {
+            console.log('stopping bubble');
+            if (forceSimulation && forceSimulation.stop)
+                forceSimulation.stop();
+        }, 6000);
     }
 
     function addGroupingListeners() {
@@ -371,10 +387,10 @@ var createBubbleChart = function () {
                 .attr("transform", "translate(0," + (height + offScreenYOffset) + ")")
                 .call(xAxis)
                 .selectAll(".tick")
-                .attr("font-size", "16px")
+                .attr("font-size", "10px")
                 .selectAll("text")
                 .style("text-anchor", "end")
-                .attr("dy", "0.45em")
+                .attr("dy", "0.25em")
                 .attr("transform", "rotate(-65)");
 
             var yAxis = d3.axisLeft(populationScaleY)
@@ -392,4 +408,7 @@ var createBubbleChart = function () {
                 .attr("transform", translation);
         }
     }
+    
+    bubbleOpts.yearSliderHandler = yearSliderHandler;
+    bubbleOpts.ref = this;
 };

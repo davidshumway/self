@@ -29,32 +29,126 @@ var schoolProfile = {};
  *	if (schoolProfile.require()) { schoolProfile.load([400099]) }
  */
 schoolProfile.require = function() {
+  var d3 = d3_version1;
+  
   try {
     // Must have d3, must have id=profile element.
-    d3.select('#profile');
+    d3.select('#profile-charts');
   } catch (e) {
     console.log('WARN: Missing #profile div for profile!');
     return false;
   }
+  
+  // Reset
+  schoolProfile.reset();
+  
   // Add default text
-  var d = d3.select('#profile').append('div');
+  var d = d3.select('#profile-charts').append('div');
   d.node().id = 'profile-preload';
   d.node().className = 'unselectable-text';
+  d.node().style.display = 'none'; // Hide it
   d.text('Select a school to view its profile.');
+  
+  // Stretch the intro text to fit container size.
+  // Needs to be on a timeout as the page itself is loading
+  // and resizing.
+  setTimeout(schoolProfile.stretch, 600);
+  setTimeout(function () { // Now show it
+    d3.select('#profile-preload').node().style.display = 'flex';
+  }, 600);
+  
+  // Add button behavior
+  d3.select('#profile-search-button').on('click', function() {
+    schoolProfile.lightbox((schoolProfile.schoolCompareLightbox).bind(this));
+  });
   return true;
 }
-schoolProfile.require();
 
 /**
  * DEBUG
+ * Deprecated
  */
-schoolProfile.debug = function() {
-  if (window.location.href.indexOf('debug') != -1) {
-    this.load(/debug(\d+)/.exec(window.location.href)[1]);
-    // School ID follows "debug".
+//~ schoolProfile.debug = function() {
+  //~ if (window.location.href.indexOf('debug') != -1) {
+    //~ this.load(/debug(\d+)/.exec(window.location.href)[1]);
+    //~ // School ID follows "debug".
+  //~ }
+//~ }
+//~ schoolProfile.debug();
+
+/**
+ * @brief Stretch the profile when the page reloads.
+ */
+schoolProfile.stretch = function() {
+  var bb = d3.select('#profile').node().getBoundingClientRect();
+  try {
+    var x = d3.select('#profile-preload').node();
+    if (x != null)
+      x.style.height = (bb.height - 42) + 'px';
+  } catch(e) {
+    //
+    console.log('caught e',e);
   }
 }
-schoolProfile.debug();
+  
+/**
+ * @brief Clear map markers
+ */
+schoolProfile.clearPreviousMarkers = function() {
+  if (!mapOpts.currentHighlightedMarkers) {
+    return;
+  }
+  for (var i in mapOpts.currentHighlightedMarkers) {
+    try {
+      var marker = mapOpts.currentHighlightedMarkers[i];
+      //~ console.log('Reset marker',marker);
+      marker.options.weight = 0.5;
+      marker._radius = 8;
+      marker.options.color = '#000';
+      marker.options.dashArray = '';
+      marker.setStyle(); // refreshes
+    } catch(e) {
+      console.log('Caught error in clearPreviousMarkers', e);
+    }
+  }
+  mapOpts.currentHighlightedMarkers = [];
+}
+/**
+ * @brief Highlight selected markers
+ */
+schoolProfile.highlightMarkers = function(schoolArray) {
+  // Start by resetting currentHighlightedMarker
+  mapOpts.currentHighlightedMarkers = [];
+  
+  for (var i in schoolArray) {
+    var id = schoolArray[i];
+    
+    // Open on map
+    try {
+      var md = model.data.byId[id];
+      $("#school-zip").val(md.Zip);
+      mapOpts.fireZipClick();
+    } catch(e) {
+      // School does not exist?
+    }
+    
+    // Set marker style
+    try {
+      var m = mapOpts.markersBySchoolID[id];
+      mapOpts.currentHighlightedMarkers.push(mapOpts.markersBySchoolID[id]);
+      //~ if (m.options.shape == 'triangle') {
+      //~ } else {
+      //~ }
+      m.options.color = '#111';
+      m.options.dashArray = '';
+      m.options.weight = 4;
+      //~ mapOpts.currentHighlightedMarker._radius = 20;
+      m.setStyle(); // refreshes
+    } catch(e) {
+      //
+    }
+  }
+}
 
 /**
  * @brief Load data and select school by school ID.
@@ -67,44 +161,44 @@ schoolProfile.debug();
  * @param year Int or str of year to load.
  */
 schoolProfile.load = function(schoolArray, year, blockScroll) {
+  var d3 = d3_version1;
+  
   // Reset profile
-  var d = d3.select('#profile');
+  var d = d3.select('#profile-charts');
   d.selectAll('*').remove();
   
   // If empty school array, show loading
   if (!schoolArray.length) {
+    // Hide section content
+    d3.select('#profile-content').style('display', 'none');
+    d3.select('#profile-content-multi').style('display', 'none');
+    d3.select('#profile-content-single').style('display', 'none');
+    
     schoolProfile.require();
     return;
+  } else {
+    // Show section content
+    d3.select('#profile-content').style('display', '');
   }
   
-  // Add Back to top button
-  var btt = d.append('div');
-  btt.node().className = 'profile-backToTop';
-  btt.text('Back to Top');
-  btt.on('click', function() {
-    d3.select('body').node().scrollIntoView({
-      behavior: "smooth", // or "auto" or "instant"
-      block: "start" // or "end"
-    });
-  });
+  // Pan to view and marker highlights
+  // Clear previous markers
+  schoolProfile.clearPreviousMarkers();
+  
+  // Highlight
+  schoolProfile.highlightMarkers(schoolArray);
   
   // Set globals
   schoolProfile.reset();
   schoolProfile.currentView.currentSchoolArray = schoolArray;
   schoolProfile.currentView.currentSchoolYear = year;
   schoolProfile.saToObj(schoolArray); // sets schoolProfile.currentView.currentSchoolArrayObj
-  schoolProfile.currentView.schoolComparison = (schoolArray.length > 1) ?
-    true : false;
+  schoolProfile.currentView.schoolComparison =
+    (schoolArray.length > 1)
+    ? true : false;
     
+  // Init
   schoolProfile.init(schoolArray, year);
-  
-  // Finally, scroll into view title
-  if (!blockScroll) {
-    d3.select('#profile').node().scrollIntoView({
-      behavior: "smooth", // or "auto" or "instant"
-      block: "start" // or "end"
-    });
-  }
 }
 
 /**
@@ -123,43 +217,59 @@ schoolProfile.saToObj = function(schoolArray) {
  * @param schoolID Integer (or str?) representing a school's ID
  */
 schoolProfile.addToCompare = function(schoolID) {
-  var x;
-  var d = d3.select('#schoolCompareButton').node();
-  if (d.style.opacity == 0
-      && schoolProfile.currentView
-      && schoolProfile.currentView.currentSchoolArray) {
-    // If opacity = 0 it's a new comparison
-    schoolProfile.currentView.currentSchoolArray = [schoolID];
-    schoolProfile.currentView.currentSchoolArrayObj[schoolID] = true;
+  var d3 = d3_version1;
+  if (!schoolProfile.currentView) {
+    schoolProfile.reset();
   }
-  if (schoolProfile.currentView
-      && schoolProfile.currentView.currentSchoolArray) {
-    x = schoolProfile.currentView.currentSchoolArray;
-    if (!schoolProfile.currentView.currentSchoolArrayObj[schoolID]) {
-      x.push(schoolID);
-    }
-  } else {
-    x = [ schoolID ];
-  }
-  var n = (x.length == 1) ? ' school' : ' schools';
-  d.style.opacity = 1;
-  d.value = 'Comparing '
-    + x.length + n + '\n (Click to view comparison)';
-  d.onclick = function() {
-    d.style.opacity = 0;
-    d3.select('#profile').node().scrollIntoView({
-      behavior: "smooth", // or "auto" or "instant"
-      block: "start" // or "end"
-    });
+  var x = schoolProfile.currentView.currentSchoolArray;
+  var y = schoolProfile.currentView.currentSchoolYear;
+  if (!schoolProfile.currentView.currentSchoolArrayObj[schoolID]) {
+    x.push(schoolID);
   }
   schoolProfile.reset();
+  schoolProfile.load(x, y, true);
+  
+  //~ var x;
+  //~ var d = d3.select('#schoolCompareButton').node();
+  //~ if (d.style.opacity == 0
+      //~ && schoolProfile.currentView
+      //~ && schoolProfile.currentView.currentSchoolArray) {
+    //~ // If opacity = 0 it's a new comparison
+    //~ schoolProfile.currentView.currentSchoolArray = [schoolID];
+    //~ schoolProfile.currentView.currentSchoolArrayObj[schoolID] = true;
+  //~ }
+  //~ if (schoolProfile.currentView
+      //~ && schoolProfile.currentView.currentSchoolArray) {
+    //~ x = schoolProfile.currentView.currentSchoolArray;
+    //~ if (!schoolProfile.currentView.currentSchoolArrayObj[schoolID]) {
+      //~ x.push(schoolID);
+    //~ }
+  //~ } else {
+    //~ x = [ schoolID ];
+  //~ }
+  //~ var n = (x.length == 1) ? ' school' : ' schools';
+  //~ d.style.opacity = 1;
+  //~ d.value = 'Comparing '
+    //~ + x.length + n + '\n (Click to view comparison)';
+  //~ d.onclick = function() {
+    //~ d.style.opacity = 0;
+  //~ }
+  //~ schoolProfile.reset();
   // true to block scroll
-  schoolProfile.load(x, schoolProfile.currentView.currentSchoolYear, true);
+  //schoolProfile.load(x, schoolProfile.currentView.currentSchoolYear, true);
 }
 /**
  * @brief Reset.
  */
 schoolProfile.reset = function() {
+  schoolProfile.currentView = {
+    schoolComparison: false, // set to true if multi-compare, used in onclick line chart
+    currentSchoolArray: [], // tracks current school's being shown
+    currentSchoolArrayObj: {}, // fast dictionary lookup
+    currentSchoolYear: 2019, // fast dictionary lookup
+    currentTrend: false, // None or 1-4
+  }
+  
   schoolProfile.html = { // list of elements that will be populated
     filters: { // html elements for filtering
       lineCompare: [],
@@ -172,17 +282,38 @@ schoolProfile.reset = function() {
     'Asian', 'Hispanic', 'Hawaiian/Pacific Islander', 'Multi-Racial',
     'Not Available','Native American/Alaskan','White'],
   }
-  schoolProfile.currentView = {
-    schoolComparison: false, // set to true if multi-compare, used in onclick line chart
-    currentSchoolArray: [], // tracks current school's being shown
-    currentSchoolArrayObj: {}, // fast dictionary lookup
-    currentSchoolYear: 2019, // fast dictionary lookup
-  }
   schoolProfile.model = { // hold a model of schoolProfile
     schoolComparison: {
       searchResults: [],
       searchResultsObj: {},
     }
+  }
+  
+  // Reset trends key
+  var n = document.getElementsByClassName('profile-trends-key');
+  for (var i=0; i<n.length; i++) {
+    n[i].style.border = '';
+    n[i].title = 'Click to filter';
+  }
+}
+
+/**
+ * @brief Redraw without changing current settings.
+ */
+schoolProfile.redraw = function() {
+  d3.select('#profile-charts').selectAll('*').remove();
+  // Which?
+  var n = d3.select('#profile-select-chart0').node().checked;
+  if (n) {
+    schoolProfile.stackedBar(
+      schoolProfile.currentView.currentSchoolArray,
+      schoolProfile.currentView.currentTrend
+    );
+  } else {
+    schoolProfile.drawLine( // Line chart
+      schoolProfile.currentView.currentSchoolArray,
+      schoolProfile.currentView.currentTrend,
+    );
   }
 }
 
@@ -190,121 +321,25 @@ schoolProfile.reset = function() {
  * @brief Make the profile.
  */
 schoolProfile.init = function(schoolArray, year) {
+  var d3 = d3_version1;
+  
   // Some intitial output
-  var d = d3.select('#profile');
-  schoolProfile.html.profileNotation = d.append('div');
-  schoolProfile.html.profileNotation.node().style.float = 'left';
-  schoolProfile.html.title
-    = schoolProfile.html.profileNotation.append('h2');
-  //d.append('br').node().style.clear = 'both'; // Clear container floats
-  schoolProfile.html.schoolOverviewNotation
-    = schoolProfile.html.profileNotation.append('fieldset');
-  schoolProfile.html.profileNotation.append('br');
-  schoolProfile.html.profileNotation.append('br');
-  schoolProfile.html.barNotation
-    = schoolProfile.html.profileNotation.append('fieldset');
-  //~ schoolProfile.html.barExplanatory
-    //~ = d.append('fieldset');
-  //~ d.append('br').node().style.clear = 'both'; // Clear container floats
-  schoolProfile.html.barContainer = d.append('div');
-  schoolProfile.html.lineContainer = d.append('div');
-  schoolProfile.html.barContainer.node().className = 'profile-container';
-  schoolProfile.html.lineContainer.node().className = 'profile-container';
-  schoolProfile.html.schoolOverviewNotation.node().className = 'filters';
-  schoolProfile.html.barNotation.node().className = 'filters';
-  //~ schoolProfile.html.title.style().marginTop = '60px';
-  //~ d.append('br').node().style.clear = 'both'; // Clear container floats
-  //~ schoolProfile.html.barContainer.append('br');
-  //~ schoolProfile.html.barNotation.node().style.clear = 'both';
+  var d = d3.select('#profile-charts');
   
-  if (schoolArray.length == 1) {
-    // Single school
-    var id = schoolArray[0];
-    try {
-      var m = model.data.allSchools[year][id];
-      if (model.data.allSchools[year][id]['School Name']) {
-        // Check if breaking try 
-      }
-    } catch(e) {
-      alert('Could not find school with ID ' + id + ' in year ' + year);
-      return;
-    }
-    schoolProfile.html.title.text(m['School Name']);
-    var p = schoolProfile.html.schoolOverviewNotation;
-    p.text(
-      'School ID: ' + m['School ID']
-    );
-    // More details on single school
-    if (model.data.byId[ m['School ID'] ]) {
-      var n = model.data.byId[ m['School ID'] ];
-      p.node().innerText +=
-        '\n' + n['Address'] + ', ' + n['Zip']
-        + ', ' + n['Phone'] + ' ';
-      // Append more details
-      var inp = p.append('input').node();
-      inp.type = 'button';
-      inp.value = ' More details ';
-      inp.title = 'More details about this school';
-      inp.cpsData = model.data.byId[m['School ID']];
-      inp.onclick = function() {
-        schoolProfile.lightbox(function(divLboxContainer) {
-          //console.log(this);
-          // Bind to preserve reference to this (button)
-          var c = divLboxContainer.container;
-          var s = model.data.byId[
-            schoolProfile.currentView.currentSchoolArray[0]
-          ];
-          c.append('h4').text('All CPS schema details for ' + s['School'] );
-          c.append('h5').text('(Click background to close this dialog box.)');
-          
-          // Add some details.
-          for (var i in s) {
-            var d1 = c.append('span').text(i + ': ');
-            var d2 = c.append('span').text(s[i]);
-            d1.node().style.fontWeight = 'bold';
-            c.append('br');
-          }
-        }.bind(this));
-      }
-    }
-    // Make a compare
-    p.append('br');
-    var inp = p.append('input').node();
-    inp.type = 'button';
-    inp.value = ' Add to a comparison ';
-    inp.title = 'Make a comparison between multiple schools';
-    inp.onclick = function() {
-      schoolProfile.lightbox((schoolProfile.schoolCompareLightbox).bind(this));
-    }
-  } else {
-    // Mutli-compare
-    schoolProfile.html.title.text('School Comparison');
-    var p = schoolProfile.html.schoolOverviewNotation;
-    p.html(
-      'Comparing ' + schoolArray.length + ' schools<br />'
-    );
-    var inp = p.append('input').node();
-    inp.type = 'button';
-    inp.value = ' Edit comparison ';
-    inp.title = 'Edit comparison of multiple schools';
-    inp.onclick = function() {
-      schoolProfile.lightbox((schoolProfile.schoolCompareLightbox).bind(this));
-    }
+  schoolProfile.html.title = d3.select('#profile-title');
+  schoolProfile.html.lineContainer = d3.select('#profile-charts');
+  schoolProfile.html.lineContainer.className = 'profile-container';
+  schoolProfile.lineCompare(schoolArray, [], year); // [] => all dems
+  
+  // Which?
+  var n = d3.select('#profile-select-chart0').node().checked;
+  if (n) { // Draw stacked bar
+    schoolProfile.stackedBar(
+      schoolArray, schoolProfile.currentView.currentTrend);
+  } else { // Draw line chart
+    schoolProfile.drawLine(
+      schoolArray, schoolProfile.currentView.currentTrend);
   }
-  //~ schoolProfile.html.barExplanatory.node().style.fontSize = '0.8em';
-  //~ schoolProfile.html.barExplanatory.text('* Demographic counts include PK-8 totals');
-  // click a line
-  //~ var cal = '';
-  //~ if (schoolArray.length > 1) { 
-    //~ cal = 'Click bar to narrow<br/>'
-  //~ }
-  // info
-  //~ schoolProfile.html.barExplanatory.html(cal+'* Demographic counts include PK-8 totals');
-  
-  // Build charts
-  schoolProfile.barDemographics(schoolArray, year);
-  schoolProfile.lineCompare(schoolArray);
-
 }
 
 /**
@@ -317,6 +352,8 @@ schoolProfile.init = function(schoolArray, year) {
  * @param divLboxContainer HTMLObject that is the lightbox container.
  */
 schoolProfile.schoolCompareLightbox = function(divLboxContainer) {
+  var d3 = d3_version1;
+  
   var c = divLboxContainer.container;
   var lb = { // Will hold all lightbox html elements
     container: divLboxContainer, // reference to main container
@@ -326,7 +363,6 @@ schoolProfile.schoolCompareLightbox = function(divLboxContainer) {
     filterHS: null,
     searchResults: null,
     addResults: null,
-    //~ dropdownPreselect: null,
     // right
     selectedResults: null,
     clearSelected: null,
@@ -335,10 +371,13 @@ schoolProfile.schoolCompareLightbox = function(divLboxContainer) {
   
   // Reset if existing
   c.node().innerText = '';
+
+  // Title
+  c.append('h4').text('School Select');
   
   // Top border
   c.append('hr').node().setAttribute('style',
-    'width:100%;border-color:#ccc;margin-bottom:10px;margin-top:10px;'
+    'width: 100%; border: 0px; border-top: 8px groove #ddd; margin-top: 2px; margin-bottom: 2px;'
   );
   
   var d1, d2;
@@ -346,11 +385,9 @@ schoolProfile.schoolCompareLightbox = function(divLboxContainer) {
   d2 = c.append('div');
   d1.node().className = 'profile-lightbox-compare-container';
   d2.node().className = 'profile-lightbox-compare-container';
-  d1.node().style.borderRight = '1px solid #ccc';
+  //~ d1.node().style.borderRight = '1px solid #ccc';
   
   // left
-  //~ var lg = fs.append('legend').node();
-  //~ lg.innerText = 'All or HS';
   // Text input
   var inp = d1.append('input');
   inp.node().placeholder = 'Enter a school to filter by school name';
@@ -360,34 +397,7 @@ schoolProfile.schoolCompareLightbox = function(divLboxContainer) {
   });
   inp.node().focus(); // Set focus
   lb.text = inp;
-  //~ fs.append('br');
-  //~ // Nearest x
-  //~ var inp = fs.append('select');
-  //~ var sopts = [
-    //~ '-- Preselections --',
-    //~ 'Nearest 5 schools',
-    //~ 'Nearest 10 schools',
-    //~ 'Nearest 20 schools',
-    //~ 'Nearest 5 HS',
-    //~ 'Nearest 10 HS',
-    //~ 'Nearest 20 HS',
-    //~ 'Largest 5 CPS schools',
-    //~ 'Largest 10 CPS schools',
-    //~ 'Largest 20 CPS schools',
-    //~ 'Largest 5 CPS HS',
-    //~ 'Largest 10 CPS HS',
-    //~ 'Largest 20 CPS HS',
-    //~ 'Highest 5 SAT (2018)',
-    //~ 'Highest 10 SAT (2018)',
-    //~ 'Highest 20 SAT (2018)',
-  //~ ];
-  //~ for (var i in sopts) {
-    //~ var o = inp.append('option');
-    //~ o.node().innerText = sopts[i];
-    //~ o.node().value = sopts[i];
-  //~ }
-  //~ inp.on('change', schoolProfile.schoolCompareLightbox_searchResultSchools);
-  //~ lb.dropdownPreselect = inp;
+  
   // Add radio to display HS only
   // opts 3: include all schools or only HS
   var fs = d1.append('fieldset');
@@ -446,10 +456,24 @@ schoolProfile.schoolCompareLightbox = function(divLboxContainer) {
     schoolProfile.schoolCompareLightbox_rightPaneResults();
   });
   
-  // right
+  /**
+   * Right side
+   */
+   
+  // Append a fieldset that is invisible to adjust the height of
+  // right side to match left side.
+  var fs = d2.append('fieldset');
+  fs.node().className = 'filters';
+  fs.node().style.opacity = '0';
+  fs.html('<input type="radio"/><label><b>&nbsp;</b></label>');
+  var lg = fs.append('legend').node();
+  lg.innerHTML = '&nbsp;';
+  
   var x = d2.append('div');
   x.text('Click on a school below to remove from comparison');
-  x.node().style.marginLeft = '5%';
+  x.node().style.marginLeft = '2%';
+  x.node().style.display = 'inline';
+  x.node().style.verticalAlign = 'bottom';
   // Present selection
   var d = d2.append('div');
   d.node().className = 'profile-lightbox-compare-results';
@@ -476,11 +500,15 @@ schoolProfile.schoolCompareLightbox = function(divLboxContainer) {
   // Fill right pane (initial)
   schoolProfile.schoolCompareLightbox_rightPaneResults();
   
-  // Compare button & hr
-  c.append('hr').node().setAttribute('style', 'width:100%;border-color:#ccc;display:inline-block;');
+  // Bottom hr
+  //~ c.append('hr').node().setAttribute('style', 'width:100%;border-color:#ccc;display:inline-block;');
+  
+  // Compare button
+  c.append('br');
+  c.append('br');
   var inp = c.append('input');
   inp.node().setAttribute('style',
-    'width:80%;margin-left:10%;font-size:1.4em;'
+    'width: 40%; margin-left: 30%; font-size: 1.4em; font-weight: bold; margin-top: 10px;'
   );
   inp.node().type = 'button';
   inp.node().value = 'Compare selected schools';
@@ -490,7 +518,7 @@ schoolProfile.schoolCompareLightbox = function(divLboxContainer) {
     setTimeout(function() { // Timeout forces redraw of this value
       d3.select('#profile-lightbox').node().click();
       schoolProfile.load(schoolProfile.currentView.currentSchoolArray, 2019);
-    }, 100);
+    }, 40);
   });
 }
 
@@ -502,6 +530,8 @@ schoolProfile.schoolCompareLightbox = function(divLboxContainer) {
  *      schoolProfile.currentView.currentSchoolArray.
  */
 schoolProfile.schoolCompareLightbox_rightPaneResults = function() {
+  var d3 = d3_version1;
+  
   // get vars
   // For text, only word chars are needed. No digits, spaces, etc.
   var lb = schoolProfile.html.lightbox;
@@ -535,26 +565,23 @@ schoolProfile.schoolCompareLightbox_rightPaneResults = function() {
  *      or closed.
  */
 schoolProfile.schoolCompareLightbox_searchResultSchools = function() {
+  var d3 = d3_version1;
+  
   // get vars
   // For text, only word chars are needed. No digits, spaces, etc.
   var lb = schoolProfile.html.lightbox;
   var text = lb.text.node().value.toUpperCase().replace(/[^\w]/g, '');
   var allOrHs = (lb.filterAll.node().checked) ? 'allSchools' : 'highSchools';
   var searchResults = lb.searchResults;
-  //~ var preselect = lb.dropdownPreselect;
   searchResults.node().innerText = ''; // clear any previous results
   // Reset global vars
   schoolProfile.model.schoolComparison.searchResults = [];
   schoolProfile.model.schoolComparison.searchResultsObj = {};
   
-  //~ // If selector is on
-  //~ if (preselect.selectedIndex != 0) {
-    //~ schoolProfile.processPreselect();
-  //~ }
-  
   for (var id in model.data[allOrHs][2019]) {
     var s = model.data[allOrHs][2019][id]; // get school
-    if (s['School Name'] == '' || s['School Name'].indexOf('District') != -1)
+    // Invalid schools
+    if (!s || !s['School Name'] || s['School Name'] == '' || s['School Name'].indexOf('District') != -1)
       continue;
     if (schoolProfile.currentView.currentSchoolArrayObj[id]) {
       // already selected
@@ -596,6 +623,8 @@ schoolProfile.schoolCompareLightbox_searchResultSchools = function() {
  *     schoolProfile.schoolCompareLightbox_addRow('left');
  */
 schoolProfile.schoolCompareLightbox_addRow = function(leftOrRight, schoolObj) {
+  var d3 = d3_version1;
+  
   var d = document.createElement('div');
   d.className = 'profile-lightbox-compare-searchResultDiv';
   d.innerText = schoolObj['School Name'];
@@ -631,19 +660,34 @@ schoolProfile.schoolCompareLightbox_addRow = function(leftOrRight, schoolObj) {
  * 
  * @param lfunc Function to run within the lightbox.
  * 
- * @callback Fires cb function with dark div container as parameter.
+ * @callback Fires cb function with dark div container as parameter (.container).
  */
 schoolProfile.lightbox = function(lfunc) {
+  var d3 = d3_version1;
   // Dark div
   var b1 = d3.select('body').append('div');
   b1.node().id = 'profile-lightbox';
+  // Container div
   var b2 = d3.select('body').append('div');
   b2.node().id = 'profile-lightbox-container';
+  // x div
+  var b3 = d3.select('body').append('div');
+  b3.node().id = 'profile-lightbox-close-btn2';
+  
+  // Global accessors
   b1.container = b2;
-  b1.node().container = b2;
+  b1.node().xcont = b2.node();
+  b1.node().xbtn = b3.node();
+  
+  
+  // Onclick events
   b1.on("click", function() {
-    document.body.removeChild(this.container.node());
+    document.body.removeChild(this.xcont);
+    document.body.removeChild(this.xbtn);
     document.body.removeChild(this);
+  });
+  b3.on("click", function() {
+    b1.node().click();
   });
   lfunc(b1);
 }
@@ -659,16 +703,27 @@ schoolProfile.lightbox = function(lfunc) {
  * @param schoolArray Array of school IDs to load
  * @param demoArray Array of demographies to load
  *        (full, e.g. "Hispanic" not "HI")
+ * @param year Number, the year value
  */
-schoolProfile.lineCompare = function(schoolArray, demoArray) {
+schoolProfile.lineCompare = function(schoolArray, demoArray, year) {
+  var d3 = d3_version1;
+  
   // Reset any previous
   schoolProfile.html.filters.lineCompare = [];
   schoolProfile.html.lineContainer.selectAll('*').remove();
   
-  schoolProfile.html.lineContainer.append('h3').text('Population Chart');
+  var ctitle = 'Population chart for ';
+  try {
+    if (schoolArray.length > 1)
+      ctitle += 'selected schools';
+    else {
+      ctitle += model.data.allSchools[year][schoolArray[0]]['School Name'];
+    }
+  } catch(e) {
+    //
+  }
+  schoolProfile.html.title = ctitle;
   
-  var dlcf = schoolProfile.html.lineContainer.append('div');
-  dlcf.node().id = 'div-line-compare-filters';
   var dems = ['AA', 'AP', 'AS', 'HI', 'HP', 'MR', 'NA','NM','WH'];
   var demsFull = ['African American', 'Asian/Pacific Islander(Retired)',
     'Asian', 'Hispanic', 'Hawaiian/Pacific Islander', 'Multi-Racial',
@@ -689,11 +744,8 @@ schoolProfile.lineCompare = function(schoolArray, demoArray) {
   // Select demos
   // Only in comparison
   if (schoolArray.length > 1) {
-    dlcf.append('fieldset').node().id = 'lc-select-dems';
     var lcd = d3.select('#lc-select-dems');
-    lcd.node().className = 'filters';
-    var lg = lcd.append('legend').node();
-    lg.innerText = 'Select Demographics';
+    lcd.selectAll('*').remove();
     // Build fields
     for (var i in dems) {
       var inp = lcd.append('input').node();
@@ -710,12 +762,11 @@ schoolProfile.lineCompare = function(schoolArray, demoArray) {
       inp.schoolArray = schoolArray; // Temp. school array holder
       schoolProfile.html.filters.lineCompare.push(inp);
       inp.onclick = function() {
-        schoolProfile.drawLine(this.schoolArray);
-      }
-      if (i % 4 == 0 && i > 0) {
-        lcd.append('br')
+        //schoolProfile.drawLine(this.schoolArray);
+        schoolProfile.redraw();
       }
     }
+    lcd.append('br');
     var inp = lcd.append('input').node();
     inp.id = 'inp-dems-all';
     inp.type = 'button';
@@ -726,8 +777,8 @@ schoolProfile.lineCompare = function(schoolArray, demoArray) {
       for (var i in schoolProfile.html.filters.lineCompare) {
         var cb = schoolProfile.html.filters.lineCompare[i];
         cb.checked = true;
-        schoolProfile.drawLine(this.schoolArray);
       }
+      schoolProfile.redraw();
     }
     var inp = lcd.append('input').node();
     inp.id = 'inp-dems-none';
@@ -738,8 +789,8 @@ schoolProfile.lineCompare = function(schoolArray, demoArray) {
       for (var i in schoolProfile.html.filters.lineCompare) {
         var cb = schoolProfile.html.filters.lineCompare[i];
         cb.checked = false;
-        schoolProfile.drawLine(this.schoolArray);
       }
+      schoolProfile.redraw();
     }
     // Filter if rising or falling
     
@@ -747,81 +798,104 @@ schoolProfile.lineCompare = function(schoolArray, demoArray) {
   
   // Add a spacer on multi
   if (schoolArray.length > 1) {
-    //~ dlcf.append('br').node().style.clear = 'both'; // Add spacer
-    //~ dlcf.append('br');
+    // ...
   }
   
-  // Key for rising / fall trend
-  // Simple color scale.
-  //    if (x >= 0.75) {
-  //      lineColor = '#006d2c';
-  //    } else if (x >= 0.5) {
-  //      lineColor = '#74c476';
-  //    } else if (x >= 0.25) {
-  //      lineColor = '#fb6a4a';
-  //    } else { // >0
-  //      lineColor = '#a50f15';
-  //    }
-  var lcd = dlcf.append('fieldset');
-  lcd.node().className = 'filters';
-  var lg = lcd.append('legend');
-  lg.node().innerText = 'Trends Key';
-  var risDisp1 = lcd.append('div');
-  risDisp1.node().setAttribute('style',
-    'display:inline-block;background-color:#2c7bb6;width:10px;height:10px;margin-right:2px;'
-  );
-  var risDisp2 = lcd.append('div');
-  risDisp2.node().setAttribute('style',
-    'display:inline-block;background-color:#abd9e9;width:10px;height:10px;margin-right:2px;'
-  );
-  var ris = lcd.append('div');
-  ris.text('rising');
-  ris.node().setAttribute('style',
-    'display:inline-block;height:10px;margin-right:2px;'
-  );
-  var falDisp1 = lcd.append('div');
-  falDisp1.node().setAttribute('style',
-    'display:inline-block;background-color:#fdae61;width:10px;height:10px;margin-right:2px;'
-  );
-  var falDisp2 = lcd.append('div');
-  falDisp2.node().setAttribute('style',
-    'display:inline-block;background-color:#d7191c;width:10px;height:10px;margin-right:2px;'
-  );
-  var fal = lcd.append('div');
-  fal.text('falling');
-  fal.node().setAttribute('style',
-    'display:inline-block;height:10px;margin-right:2px;'
-  );
   // Click if multi
   if (schoolArray.length > 1) {
-    risDisp1.style('cursor', 'pointer');
-    risDisp2.style('cursor', 'pointer');
-    falDisp1.style('cursor', 'pointer');
-    falDisp2.style('cursor', 'pointer');
-    var d = lcd.append('div')
-    d.text('Click to filter');
-    d.style('width', '99%');
-    d.style('text-align', 'center');
-    risDisp1.on('click', function() {
-      schoolProfile.drawLine(schoolProfile.currentView.currentSchoolArray, 1);
-    });
-    risDisp2.on('click', function() {
-      schoolProfile.drawLine(schoolProfile.currentView.currentSchoolArray, 2);
-    });
-    falDisp1.on('click', function() {
-      schoolProfile.drawLine(schoolProfile.currentView.currentSchoolArray, 3);
-    });
-    falDisp2.on('click', function() {
-      schoolProfile.drawLine(schoolProfile.currentView.currentSchoolArray, 4);
-    });
+    var n = document.getElementsByClassName('profile-trends-key');
+    for (var i=0; i<n.length; i++) {
+      n[i].style.cursor = 'pointer';
+      n[i].title = 'Click to filter';
+      n[i].el = i + 1;
+      n[i].onclick = function(e) {
+        if (this.title == 'Click to reset') {
+          this.title = '';
+          this.style.border = '';
+          schoolProfile.currentView.currentTrend = false;
+          schoolProfile.redraw();
+          return;
+        }
+        var n = document.getElementsByClassName('profile-trends-key');
+        for (var i=0; i<n.length; i++) {
+          n[i].style.border = '';
+          n[i].title = 'Click to filter';
+        }
+        this.style.border = '2px dotted black';
+        this.title = 'Click to reset';
+        schoolProfile.currentView.currentTrend = this.el;
+        schoolProfile.redraw();
+      };
+    }
+  } else {
+    var n = document.getElementsByClassName('profile-trends-key');
+    for (var i=0; i<n.length; i++) {
+      n[i].style.cursor = '';
+      n[i].title = '';
+    }
   }
   
-  // If multi-school compare, then add text to click line to see school
-  // separately.
-  if (schoolArray.length > 1) {
-    var p = dlcf.append('fieldset');
-    p.html('Click chart line<br/>to view school');
-    p.node().className = 'filters';
+  if (schoolArray.length == 1) {
+    // Single school
+    d3.select('#profile-content-single').style('display', '');
+    d3.select('#profile-content-multi').style('display', 'none');
+    var id = schoolArray[0];
+    try {
+      var m = model.data.allSchools[year][id];
+      if (model.data.allSchools[year][id]['School Name']) {
+        // Check if breaking try 
+      }
+    } catch(e) {
+      console.log('WARN: (Profile) Could not find school with ID ' +
+        id + ' in year ' + year);
+      return;
+    }
+    //~ schoolProfile.html.title.text(m['School Name']); // Not here.
+    var p = d3.select('#profile-single-info');
+    p.text(
+      m['School Name']// + ' | (ID: ' + m['School ID'] + ')'
+    );
+    // More details on single school
+    if (model.data.byId[ m['School ID'] ]) {
+      var n = model.data.byId[ m['School ID'] ];
+      p.node().innerText += ' ';
+      // Limit extraneous detail
+      //~ p.node().innerText +=
+        //~ '\n' + n['Address'] + ', ' + n['Zip']
+        //~ + ', ' + n['Phone'] + ' ';
+      // Append more details
+      var inp = p.append('input').node();
+      inp.type = 'button';
+      inp.value = ' More details ';
+      inp.title = 'More details about this school';
+      inp.cpsData = model.data.byId[m['School ID']];
+      inp.onclick = function() {
+        schoolProfile.lightbox(function(divLboxContainer) {
+          //console.log(this);
+          // Bind to preserve reference to this (button)
+          var c = divLboxContainer.container;
+          var s = model.data.byId[
+            schoolProfile.currentView.currentSchoolArray[0]
+          ];
+          c.append('h4').text('All CPS schema details for ' + s['School'] );
+          c.append('h5').text('(Click background to close this dialog box.)');
+          
+          // Add some details.
+          for (var i in s) {
+            var d1 = c.append('span').text(i + ': ');
+            var d2 = c.append('span').text(s[i]);
+            d1.node().style.fontWeight = 'bold';
+            c.append('br');
+          }
+        }.bind(this));
+      }
+    }
+  } else {
+    // Mutli-compare
+    d3.select('#profile-content-multi').style('display', '');
+    d3.select('#profile-content-single').style('display', 'none');
+    d3.select('#profile-multi-num').text(schoolArray.length);
+    
   }
   
   // opts 2: split or total the demographics
@@ -838,10 +912,11 @@ schoolProfile.lineCompare = function(schoolArray, demoArray) {
   
   // opts 8: scoring data
   
-  // clear floats
-  dlcf.append('br').node().style.clear = 'both';
-  
-  schoolProfile.drawLine(schoolArray);
+  // Add bar chart here if multi.
+  if (schoolArray.length > 1) {
+    schoolProfile.html.barContainer = d3.select('#profile-multi-bar');
+    schoolProfile.barDemographics(schoolArray, year);
+  }
 }
 
 /**
@@ -884,6 +959,8 @@ schoolProfile.lineCompareSumDemos = function(schoolObj) {
  *    Tri-color finder: http://colorschemedesigner.com/csd-3.5/
  */
 schoolProfile.drawLine = function(schoolArray, filterTrend) {
+  // use d3 "v1" in this function
+  var d3 = d3_version1;
   
   // total pop.
   var lineGroups = [ // Array of line groups
@@ -988,14 +1065,16 @@ schoolProfile.drawLine = function(schoolArray, filterTrend) {
   schoolProfile.html.lineContainer.selectAll('svg').remove('*');
   
   var vis = schoolProfile.html.lineContainer.append("svg");
-  var WIDTH = 700;
-  var HEIGHT = 400;
+  var xy1 = d3.select('#profile').node().getBoundingClientRect();
+  var xy2 = d3.select('#profile-content').node().getBoundingClientRect();
+  var WIDTH = xy1.width - 40;// initial is box... 700;
+  var HEIGHT = xy1.height - xy2.height - 60;
   vis.attr('width', WIDTH);
   vis.attr('height', HEIGHT);
   
   var MARGINS = {
     top: 20,
-    right: 280,
+    right: 100,
     bottom: 20,
     left: 100
   }
@@ -1021,12 +1100,12 @@ schoolProfile.drawLine = function(schoolArray, filterTrend) {
     .ticks(5)
     .orient("bottom")
     .tickFormat(function (d) {
-      if (d == 2019) return "18-19";
-      else if (d == 2018) return "17-18";
-      else if (d == 2017) return "16-17";
-      else if (d == 2016) return "15-16";
-      else if (d == 2015) return "14-15";
-      else if (d == 2014) return "13-14";
+      if (d == 2019) return "'19";
+      else if (d == 2018) return "'18";
+      else if (d == 2017) return "'17";
+      else if (d == 2016) return "'16";
+      else if (d == 2015) return "'15";
+      else if (d == 2014) return "'14";
     })
     .innerTickSize(-HEIGHT)
     .outerTickSize(0);
@@ -1070,6 +1149,11 @@ schoolProfile.drawLine = function(schoolArray, filterTrend) {
     var yval = line.map(function(d) { return d.total; });
     var xval = line.map(function(d) { return parseInt(d.year, 10); });
     lineData[i].reg = profile.linearRegression(yval, xval);
+    lineData[i].regNormal = line.reg.slope / 160; // Assumes 160 is a steep slope in the data set.
+    lineData[i].regNormal = (lineData[i].regNormal > 1) ? 1 : lineData[i].regNormal;
+    lineData[i].regNormal = (lineData[i].regNormal < -1) ? -1 : lineData[i].regNormal;
+    lineData[i].regNormal = lineData[i].regNormal / 2;
+    lineData[i].regNormal += 0.5;
   }
   
   // Extent of lin. regressions. Useful for determining color min / max.
@@ -1086,20 +1170,7 @@ schoolProfile.drawLine = function(schoolArray, filterTrend) {
   // Draw lines
   for (i in lineData) {
     var line = lineData[i];
-
-    // lineColor
-    // if x > 0, x = 0.5 to 1
-    // if x < 0, x = 0 to 0.5
-    //var x = line.reg.slope / 162; // Assumes 162 is a rather high slope in the data set.
-    var x = line.reg.slope / 160; // Assumes 162 is a rather high slope in the data set.
-    x = (x > 1) ? 1 : x;
-    x = (x < -1) ? -1 : x;
-    x = x / 2;
-    x += 0.5;
-    
-    // The middle is impossible to see (too light).
-    // So add some to avoid the middle.
-    //~ x *= (x < 0.5) ? 0.05 : 1.05;
+    var x = lineData[i].regNormal;
     
     // A quantitative scale of colors shows minute difference in trend.
     // var lineColor = d3.interpolateBrBG(x);
@@ -1162,13 +1233,18 @@ schoolProfile.drawLine = function(schoolArray, filterTrend) {
       .attr("lastYear", line[line.length - 1].year) // Attr to track last year of data (if closed)
       .attr("lSlope", Math.round(line.reg.slope * 10) / 10)
       .on("mouseover", function(d) {
+        // use "v1" of d3 in this function
+        var d3 = d3_version1;
         this.setAttribute('stroke-width', 6);
-        var idrl = '#paRightLabels'
-          + this.getAttribute('schoolName').replace(/[^\w]/g, '-');
-        d3.select(idrl).transition()
-          .duration(80)
-          .style('font-weight', 'bold')
-          .style('font-size', '12px');
+        // Removing labels
+        // =============================================================
+            //~ var idrl = '#paRightLabels'
+              //~ + this.getAttribute('schoolName').replace(/[^\w]/g, '-');
+            //~ d3.select(idrl).transition()
+              //~ .duration(80)
+              //~ .style('font-weight', 'bold')
+              //~ .style('font-size', '12px');
+        // =============================================================
         var n = this.getAttribute('schoolName') + '<br/>'
           + 'Slope: '
           + this.getAttribute('lSlope');// + '<br/>'
@@ -1182,18 +1258,22 @@ schoolProfile.drawLine = function(schoolArray, filterTrend) {
           .style('border', '1px solid #333');
       })
       .on("mouseout", function(d) {
+        // use "v1" of d3 in this function
+        var d3 = d3_version1;
         this.setAttribute('stroke-width', 2);
         divToolTip.transition()
           .duration(100)
           .style('opacity', 0)
           .style('border', 'none');
-        var idrl = '#paRightLabels'
-          + this.getAttribute('schoolName').replace(/[^\w]/g, '-');
-        //~ d3.select(idrl).node().sizeInit = d3.select(idrl).node().style.fontSize;
-        d3.select(idrl).transition()
-          .duration(80)
-          .style('font-weight', 'normal')
-          .style('font-size', d3.select(idrl).node().fontSizeInit);
+        // Removing labels
+        // =============================================================
+            //~ var idrl = '#paRightLabels'
+              //~ + this.getAttribute('schoolName').replace(/[^\w]/g, '-');
+            //~ d3.select(idrl).transition()
+              //~ .duration(80)
+              //~ .style('font-weight', 'normal')
+              //~ .style('font-size', d3.select(idrl).node().fontSizeInit);
+        // =============================================================
       })
       .on("click", function(d) {
         // Opens single school for review
@@ -1206,94 +1286,77 @@ schoolProfile.drawLine = function(schoolArray, filterTrend) {
           // Nothing?
         }
       });
-    // Right side line labels
-    var finalY = yRange(line[line.length-1].total);
-    // Add label.
-    larray.push({
-      x: WIDTH-MARGINS.right+3,
-      y: finalY,
-      name: line[0].school,
-    });
-    aarray.push({
-      x: WIDTH-MARGINS.right+3,
-      y: finalY,
-      r: 0.01
-    });
+    // Removing labels
+    // =================================================================
+        // Right side line labels
+        //~ var finalY = yRange(line[line.length-1].total);
+        //~ // Add label.
+        //~ larray.push({
+          //~ x: WIDTH-MARGINS.right+3,
+          //~ y: finalY,
+          //~ name: line[0].school,//.replace(/(([\w])([\w]+))*/g, '$2'),
+        //~ });
+        //~ aarray.push({
+          //~ x: WIDTH-MARGINS.right+3,
+          //~ y: finalY,
+          //~ r: 0.01
+        //~ });
+    // =================================================================
   }
   
-  // Basic label
-  // Draw labels
-  var labels = vis.selectAll(".paRightLabelsLineChart")
-    .data(larray)
-    .enter()
-    .append("text")
-    .attr("class", "profile-axis paRightLabelsLineChart")
-    //~ .attr("transform",
-      //~ "translate(" + (WIDTH-MARGINS.right+3) + "," + finalY + ")")
-    .attr("x", function(d) { return (d.x); })
-    .attr("y", function(d) { return (d.y); })
-    .attr("dy", ".35em")
-    .attr("text-anchor", "start")
-    .style("fill", "steelblue")
-    .attr("id", function(d) {
-        var idrl = 'paRightLabels' + d.name.replace(/[^\w]/g, '-');
-        return idrl;
-    })
-    .text(function(d) {
-      // split into no more than 20 chars per name
-      //~ var s = d.name.replace(/(.{10})/g, "$1<br/>");
-      s = d.name.split(' ').join('\n');
-      return s;
-    })
-    .on("mouseover", function(d) {
-    });
-  
-  // W/H
-  // Scale the size of text based on # of labels, to keep it from
-  // exploding over the chart.
-  // Set temporary key fontSizeInit to track size.
-  var idx = 0;
-  labels.each(function() {
-    if (larray.length > 30) {
-      this.style.fontSize = (30 / larray.length) + 'em';
-      this.fontSizeInit = (30 / larray.length) + 'em';
-    }
-    larray[idx].width = this.getBBox().width;
-    larray[idx].height = this.getBBox().height;
-    idx += 1;
-  });
-  
-  //~ var links = vis.selectAll(".link")
-    //~ .data(larray)
-    //~ .enter()
-    //~ .append("line")
-    //~ .attr("class", "link")
-    //~ .attr("x1", function(d) { return (d.x); })
-    //~ .attr("y1", function(d) { return (d.y); })
-    //~ .attr("x2", function(d) { return (d.x); })
-    //~ .attr("y2", function(d) { return (d.y); })
-    //~ .attr("stroke-width", 1)
-    //~ .attr("stroke", "gray");
-    
-  // Labeler
-  d3.labeler()
-    .label(larray)
-    .anchor(aarray)
-    .width(WIDTH)
-    .height(HEIGHT)
-    .start(400); // # of passes
-  
-  labels
-    .transition()
-    .duration(1600)
-    .attr("x", function(d) { return (d.x); })
-    .attr("y", function(d) { return (d.y); });
-
-  //~ links
-    //~ .transition()
-    //~ .duration(800)
-    //~ .attr("x2",function(d) { return (d.x); })
-    //~ .attr("y2",function(d) { return (d.y); });
+  // Removing labels
+  // ===================================================================
+      //~ // Basic label
+      //~ // Draw labels
+      //~ var labels = vis.selectAll(".paRightLabelsLineChart")
+        //~ .data(larray)
+        //~ .enter()
+        //~ .append("text")
+        //~ .attr("class", "profile-axis paRightLabelsLineChart")
+        //~ .attr("x", function(d) { return (d.x); })
+        //~ .attr("y", function(d) { return (d.y); })
+        //~ .attr("dy", ".35em")
+        //~ .attr("text-anchor", "start")
+        //~ .style("fill", "steelblue")
+        //~ .attr("id", function(d) {
+            //~ var idrl = 'paRightLabels' + d.name.replace(/[^\w]/g, '-');
+            //~ return idrl;
+        //~ })
+        //~ .text(function(d) {
+          //~ return d.name.replace(/(([\w])[\w]+)*/g, '$2').replace(/[\.\- ]/g, '');
+        //~ })
+        //~ .on("mouseover", function(d) {
+        //~ });
+      
+      //~ // W/H
+      //~ // Scale the size of text based on # of labels, to keep it from
+      //~ // exploding over the chart.
+      //~ // Set temporary key fontSizeInit to track size.
+      //~ var idx = 0;
+      //~ labels.each(function() {
+        //~ if (larray.length > 30) {
+          //~ this.style.fontSize = (30 / larray.length) + 'em';
+          //~ this.fontSizeInit = (30 / larray.length) + 'em';
+        //~ }
+        //~ larray[idx].width = this.getBBox().width;
+        //~ larray[idx].height = this.getBBox().height;
+        //~ idx += 1;
+      //~ });
+        
+      //~ // Labeler
+      //~ d3.labeler()
+        //~ .label(larray)
+        //~ .anchor(aarray)
+        //~ .width(WIDTH)
+        //~ .height(HEIGHT)
+        //~ .start(800); // # of passes
+      
+      //~ labels
+        //~ .transition()
+        //~ .duration(1600)
+        //~ .attr("x", function(d) { return (d.x); })
+        //~ .attr("y", function(d) { return (d.y); });
+  // ===================================================================
 }
 
 /**
@@ -1325,6 +1388,328 @@ profile.linearRegression = function(y, x) {
 };
 
 /**
+ * @brief Make a stacked bar. Better for displaying many schools at once.
+ * 
+ * @reference https://bl.ocks.org/mbostock/3020685
+ * 
+ * @notes If it is only one school, then show the pop. of each
+ *    demographic.
+ * 
+ * @param schoolArray Array of school ids
+ * @param filterTrend Number of trend to filter, 1-4, or false to show all
+ */
+schoolProfile.stackedBar = function(schoolArray, filterTrend) {
+  
+  var d3 = d3_version1;
+  
+  // format
+  // {schoolid, value (i.e., population), year}
+  var data = [];
+  for (var yearAS in model.data.allSchools) {
+    var y = parseInt(yearAS, 10);
+    var addedIDs = {};
+    for (var i in schoolArray) {
+      var id = schoolArray[i];
+      
+      // Only do it once.
+      // For some issue, a few zip codes have multiple schools with
+      // same ID. So it's causing double entry here.
+      if (addedIDs[id]) continue;
+      
+      addedIDs[id] = true;
+      
+      //Single schools
+      if (schoolArray.length == 1) {
+        
+        // If not here
+        if (!model.data.allSchools[yearAS].hasOwnProperty(id)
+         || !model.data.allSchools[yearAS][id].hasOwnProperty('demography')
+         || !model.data.allSchools[yearAS][id].demography.hasOwnProperty('abbr')
+         ) {
+          continue;
+        }
+        
+        for (var j in model.data.allSchools[yearAS][id].demography.abbr) {
+          var v = model.data.allSchools[yearAS][id].demography.abbr[j];
+          if (!/No$/.exec(j)) continue;
+          if (v.toString() == 'NaN') v = 0;
+          var nextEl = {
+           id: j,
+           value: v,
+           year: y,
+          };
+          data.push(nextEl);
+        }
+          
+      } else {
+        // Multi Schools
+        
+        // Add zero if not here
+        if (!model.data.allSchools[yearAS].hasOwnProperty(id)
+         || !model.data.allSchools[yearAS][id].hasOwnProperty('total')) {
+          var nextEl = {
+           id: id,
+           value: 0,
+           year: y,
+          };
+          data.push(nextEl);
+          continue;
+        }
+        
+        // Otherwise, add the data
+        var nextEl = {
+         id: id,
+         value: schoolProfile.lineCompareSumDemos(
+                  model.data.allSchools[yearAS][id]
+                ),
+         //~ model.data.allSchools[yearAS][id].total,
+         year: y,
+        };
+        data.push(nextEl);
+      }
+    }
+  }
+  
+  var xy1 = d3.select('#profile').node().getBoundingClientRect();
+  var xy2 = d3.select('#profile-content').node().getBoundingClientRect();
+  
+  var margin = {top: 20, right: 30, bottom: 30, left: 50},
+    width = xy1.width - margin.left - margin.right - 40, // Additional 40px
+    height = xy1.height - xy2.height - margin.top - margin.bottom - 20; // Additional 20
+
+  var xRange = d3.scale.linear()
+    .range([margin.left, width - margin.right])
+    .domain( [2014, 2019] );
+  var yRange = d3.scale.linear()
+    .range([height, 0]);
+    
+  var z = d3.scale.category20c();
+  
+  var xAxis = d3.svg
+    .axis()
+    .scale(xRange)
+    .ticks(5)
+    .orient("bottom")
+    .tickFormat(function (d) {
+      if (d == 2019) return "'19";
+      else if (d == 2018) return "'18";
+      else if (d == 2017) return "'17";
+      else if (d == 2016) return "'16";
+      else if (d == 2015) return "'15";
+      else if (d == 2014) return "'14";
+    })
+    .innerTickSize(-height)
+    .outerTickSize(0);
+  var yAxis = d3.svg.axis()
+    .scale(yRange)
+    .orient("left")
+    .tickSubdivide(true)
+    .tickFormat(function (d) {
+      if (d < 0) return '';
+      return d;
+    });
+    
+  var stack = d3.layout.stack()
+    .offset("zero")
+    .values(function(d) { return d.values; })
+    .x(function(d) { return d.year; })
+    .y(function(d) { return d.value; });
+
+  var nest = d3.nest()
+    .key(function(d) { return d.id; });
+  
+  var area = d3.svg.area()
+    .interpolate("cardinal")
+    .x(function(d) { return xRange(d.year); })
+    .y0(function(d) { return yRange(d.y0); })
+    .y1(function(d) { return yRange(d.y0 + d.y); });
+
+  var svg = schoolProfile.html.lineContainer
+    .append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+    .append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+  var n = nest.entries(data);
+  
+  // Sort, largest on the bottom
+  
+  // For multi
+  if (schoolArray.length > 1) {
+    // Need average of a school over the five years before creating chart data.
+    // Utilize model.data.schoolFiveYearMean
+    // Another option here is to sort by trend, then by mean.
+    // That is, all rising on the bottom, then mid-rise, then mid-fall,
+    // and finally falling on top.
+    n.sort(function(a, b) {
+      return model.data.schoolFiveYearMean[b.key] - model.data.schoolFiveYearMean[a.key];
+    });
+  } else {
+    // For single
+    // Sort by largest demographic on bottom.
+    n.sort(function(a, b) {
+      var sumValuesA = 0
+      var sumValuesB = 0;
+      var numA = 0;
+      var numB = 0;
+      for (var i in a.values) {
+        sumValuesA += a.values[i].value;
+        numA ++;
+      }
+      for (var i in b.values) {
+        sumValuesB += b.values[i].value;
+        numB ++;
+      }
+      return (sumValuesB / numB) - (sumValuesA / numA);
+    });
+  }
+  
+  var layers = stack(n);
+  
+  xRange.domain(d3.extent(data, function(d) { return d.year; }));
+  yRange.domain([0, d3.max(data, function(d) { return d.y0 + d.y; })]);
+  
+  if (filterTrend) {
+    var layersTmp = [];
+    for (var i in layers) {
+      var x = profile.lineRegNormalize(layers[i].values);
+      if (filterTrend == 1 && x >= 0.55) {
+        layersTmp.push(layers[i]);
+      }
+      if (filterTrend == 2
+        && (x < 0.55 && x >= 0.5)) {
+        layersTmp.push(layers[i]);
+      }
+      if (filterTrend == 3
+        && (x < 0.5 && x >= 0.45)) {
+        layersTmp.push(layers[i]);
+      }
+      if (filterTrend == 4 && x < 0.45) {
+        layersTmp.push(layers[i]);
+      }
+    }
+    layers = layersTmp;
+  }
+  
+  svg.selectAll(".layerPSB")
+    .data(layers)
+    .enter()
+    .append("path")
+      .attr("class", "layerPSB")
+      .style("cursor", "pointer")
+      .attr("stroke-width", '0.5')
+      .attr("stroke", '#2a2a2a')
+      .attr("d", function(d) { return area(d.values); })
+      .style("fill", function(d, i) {
+        return profile.trendColor(
+          profile.lineRegNormalize(d.values)
+        );
+      })
+      .on("click", function(d) {
+        // Opens school if multi, nothing if single.
+        // Must select a year when pop. > 0, otherwise there is no data.
+        if (d.key.indexOf('No') != -1) {
+          //
+        } else {
+          for (var yearAS=2019; yearAS>=2014; yearAS--) {
+            if (model.data.allSchools[yearAS].hasOwnProperty(d.key)) {
+              schoolProfile.currentView.currentSchoolArray = [d.key];
+              schoolProfile.currentView.currentSchoolYear = yearAS;
+              break;
+            }
+          }
+        }
+        // Load profile
+        schoolProfile.load(
+          schoolProfile.currentView.currentSchoolArray,
+          schoolProfile.currentView.currentSchoolYear
+        );
+      })
+      .on("mouseover", function(d) {
+        // use "v1" of d3 in this function
+        var d3 = d3_version1;
+        this.setAttribute('stroke-width', 2);
+        var n = '';
+        
+        // single or multi
+        if (d.key.indexOf('No') != -1) {
+          n = d.key.replace(/No$/, '');
+        } else {
+          for (var yearAS in model.data.allSchools) {
+            if (model.data.allSchools[yearAS].hasOwnProperty(d.key)
+              && model.data.allSchools[yearAS][d.key].hasOwnProperty('School Name')
+              ) {
+              n = model.data.allSchools[yearAS][d.key]['School Name'];
+              break;
+            }
+          }
+        }
+        
+        divToolTip.html(n)
+          .style('left', (d3.event.pageX) + 'px')
+          .style('top', (d3.event.pageY - 28) + 'px');
+        divToolTip.transition()
+          .duration(200)
+          .style('opacity', 0.95);
+      })
+      .on("mouseout", function(d) {
+        // use "v1" of d3 in this function
+        var d3 = d3_version1;
+        this.setAttribute('stroke-width', 0.5);
+        divToolTip.transition()
+          .duration(500)
+          .style('opacity', 0);
+      })
+      ;
+
+  svg.append("g")
+    .attr("class", "x axis")
+    .attr("transform", "translate(0," + height + ")")
+    .call(xAxis);
+
+  svg.append("g")
+    .attr("class", "y axis")
+    .call(yAxis);
+}
+/**
+ * Provides a linear regression slope between 0 (falling) and 1 (rising).
+ * 
+ * @param values Array of objects with a population statistic ("value")
+        values: [
+          0: {id: "609715", value: 2537, year: 2014},
+          1: {id: "609715", value: 2290, year: 2015},
+          2: {id: "609715", value: 2248, year: 2016},
+          3: {id: "609715", value: 2075, year: 2017},
+          4: {id: "609715", value: 1891, year: 2018},
+          5: {id: "609715", value: 1918, year: 2019}
+        ]
+ */
+profile.lineRegNormalize = function(values) {
+  var yval = values.map(function(d) { return d.value; });
+  var xval = values.map(function(d) { return d.year; });
+  var reg = profile.linearRegression(yval, xval);
+  var regNormal = reg.slope / 160; // Assumes 160 is a steep slope in the data set.
+  regNormal = (regNormal > 1) ? 1 : regNormal;
+  regNormal = (regNormal < -1) ? -1 : regNormal;
+  regNormal = regNormal / 2;
+  regNormal += 0.5;
+  return regNormal;
+}
+profile.trendColor = function(x) {
+  if (x >= 0.55) {        // rising
+    return '#2c7bb6';
+  } else if (x >= 0.5) {
+    return '#abd9e9';
+  } else if (x >= 0.45) { // falling
+    return '#fdae61';
+  } else { // >0
+    return '#d7191c';
+  }
+}
+  
+  
+/**
  * @brief Make bar graph.
  */
 schoolProfile.barDemographics = function(schoolArray, year) {
@@ -1334,6 +1719,10 @@ schoolProfile.barDemographics = function(schoolArray, year) {
         ...
     ];
   */
+  //~ console.log(schoolArray, year);
+  
+  // use "v1" of d3 in this function
+  var d3 = d3_version1;
   
   // If multi-schools, then this is combination of all schools
   var allDems = {};
@@ -1376,24 +1765,23 @@ schoolProfile.barDemographics = function(schoolArray, year) {
   }
   
   // Add to display
-  schoolProfile.html.barNotation.node().innerText = 
-    'Total students: ' + allDemsTotal
-    + '\nTotal HS students: ' + allDemsHsTotal
-    + '\n* Demographic counts include PK-8 totals'
+  var pmc = d3.select('#profile-multi-counts');
+  pmc.html( 
+    'HS/All: ('
+    +'<span title="Number of HS-only students compared" class="profile-multi-tooltip">'
+    + allDemsHsTotal + '</span>'
+    + '/<span title="Number of students compared" class="profile-multi-tooltip">'
+    + allDemsTotal + '</span>)'
+  );
   
   // Return here for single schools
   if (!schoolProfile.currentView.schoolComparison) {
-    schoolProfile.html.barContainer.node().style.display = 'none';
     return;
   } else {
-    schoolProfile.html.barContainer.node().style.display = 'block';
   }
   
-  // Year to schoolProfile.html.barContainer
-  var p = schoolProfile.html.barContainer.append('fieldset');
-  p.html('Year: '+year+'<br/>Click bar to filter demographic');
-  p.node().className = 'filters';
-  schoolProfile.html.barContainer.append('br').node().style.clear = 'both';
+  // Reset any previous
+  schoolProfile.html.barContainer.selectAll('*').remove();
   
   var d1 = [];
   for (var key in allDems) {
@@ -1402,16 +1790,12 @@ schoolProfile.barDemographics = function(schoolArray, year) {
       'stat': allDems[key]
     });
   }
-
-  var height = 200;
-  var width = 380;
-  var pad = {w: 40, top: 20, h: 120};
   
-  // Compatibility with later d3 versions
-  //~ var sl = (d3.scale) ? d3.scale.linear : d3.scaleLinear();
-  //~ var so = (d3.scale) ? d3.scale.linear : d3.scaleOrdinal();
-  // rangeRoundBands
-  // x.domain([1, root.value]).nice();
+  var pad = {w: 40, top: 20, h: 40};
+  
+  var height = 60//80;
+  var width = d3.select('#profile-multi-bar').node().getBoundingClientRect().width;
+  width -= pad.w * 2;
   
   var yScale = d3.scale.linear()
     .domain([0, d3.max(d1, function(d) { return d.stat; })]) 
@@ -1441,7 +1825,10 @@ schoolProfile.barDemographics = function(schoolArray, year) {
       .attr("height", function (d) { return height - yScale(d.stat); })
       .attr("width", xScale.rangeBand())
       .attr("fill", "cornflowerblue") // Not red
+      .attr("syear", year)
       .on("mouseover", function(d) {
+        // use "v1" of d3 in this function
+        var d3 = d3_version1;
         this.setAttribute('stroke-width', 1);
         var n = 'student';
         n += (d.stat > 1) ? 's' : '';
@@ -1450,9 +1837,11 @@ schoolProfile.barDemographics = function(schoolArray, year) {
           .style('top', (d3.event.pageY - 28) + 'px');
         divToolTip.transition()
           .duration(200)
-          .style('opacity', 0.8);
+          .style('opacity', 0.95);
       })
       .on("mouseout", function(d) {
+        // use "v1" of d3 in this function
+        var d3 = d3_version1;
         this.setAttribute('stroke-width', 0);
         divToolTip.transition()
           .duration(500)
@@ -1461,17 +1850,18 @@ schoolProfile.barDemographics = function(schoolArray, year) {
       .on("click", function(d) {
         // Opens only this demo in line charts, but only when
         // in comparison mode.
-        if (schoolProfile.currentView.schoolComparison == true) {
-          schoolProfile.lineCompare(
-            schoolProfile.currentView.currentSchoolArray,
-            [d.Demographic]
-          );
+        for (var i in schoolProfile.html.filters.lineCompare) {
+          var cb = schoolProfile.html.filters.lineCompare[i];
+          cb.checked = false;
         }
+        document.getElementById('inp-'+d.Demographic).checked = true;
+        schoolProfile.redraw();
       });
   
   var yAxis = d3.svg.axis()
     .scale(yScale)
-    .orient("left");
+    .orient("left")
+    .ticks(4);
   svg.append("g")
     .attr("class", "profile-axis")
     .attr("transform", "translate("+ pad.w +", 0)")
@@ -1502,5 +1892,4 @@ schoolProfile.barDemographics = function(schoolArray, year) {
     //~ .attr("y", height + pad.h - 80)
     //~ .style("text-anchor", "center")
     //~ .text("Demographic");
-
 }

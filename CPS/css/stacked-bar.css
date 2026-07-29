@@ -1,0 +1,59 @@
+
+/*
+*{
+    font-family: sans-serif;
+}
+*/
+/*svg,
+.legend{
+    background: #e8e8e3;
+}*/
+
+.legendSBC {
+/*
+    padding: 10px;
+*/
+
+}
+
+.rectSBC {
+    display: inline-block;
+    height: 20px;
+    margin-right: 5px;
+    width: 20px;
+    position: relative;
+    vertical-align: text-bottom;
+}
+
+.legendSBC ul {
+    list-style: none;
+    display: flex;
+    align-items: center;
+}
+
+.legendSBC li {
+    margin-right: 10px;
+}
+
+/*ul li:hover{
+    cursor: pointer;
+}*/
+
+
+/* Grid Lines */
+/*
+.line {
+    fill: none;
+    stroke: #06A09D;
+    stroke-width: 10px;
+}
+
+.grid line {
+    stroke: #FFD5D1;
+    stroke-opacity: 0.7;
+    shape-rendering: crispEdges;
+}
+
+.grid path {
+    stroke-width: 0;
+}*/

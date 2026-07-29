@@ -1,11 +1,25 @@
 // JavaScript source code
 // Code related to displaying school pointers on map goes here. 
 // TODO: Refactor controller-specific code
+
+// Global variable mapOpts
+// Used for setView by other views
+// e.g. mapOpts.map.flyTo(..., ...);
+var mapOpts = {
+    markersBySchoolID: {}, // id=>marker
+    currentHighlightedMarker: null, // Tracks highlighted marker
+    isSimClick: false, // Tracks zip code clicks
+};
+
 (function () {
     var map = L.map('map').setView([41.82, -87.6], 10.4);
-
+    mapOpts.map = map;
+    
     // Make it responsive - full window
-    //$(window).on("resize", function () { $("#map").height($(window).height()); map.invalidateSize(); }).trigger("resize");
+    $(window).on("resize", function () {
+        $("#map").height($(window).height() * 0.8);
+        map.invalidateSize();
+    }).trigger("resize");
 
     L.tileLayer('https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NXVycTA2emYycXBndHRqcmZ3N3gifQ.rJcFIG214AriISLbB6B5aw', {
         maxZoom: 18,
@@ -61,8 +75,6 @@
         info.update(layer.feature.properties);
     }
 
-    var geojson;
-
     function resetHighlight(e) {
         geojson.resetStyle(e.target);
         geojson.bringToBack();
@@ -93,11 +105,13 @@
 
     expandChicagoGeo();
 
-    geojson = L.geoJson(ChicagoMapData, {
+    var geojson = L.geoJson(ChicagoMapData, {
         style: style,
         onEachFeature: onEachFeature
     }).addTo(map);
-
+    
+    //console.log(geojson);
+    
     var legend = L.control({ position: 'bottomright' });
 
     legend.onAdd = function (map) {
@@ -127,8 +141,10 @@
     function resetSchoolLayer() {
         schoolLayers.forEach(l => l.remove());
         schoolLayers = [];
+        // Reset marker tracking object
+        mapOpts.markersBySchoolID = {};
     }
-
+    
     // CPS Data
     function onEachSchoolFeature(feature, layer) {
         var studentData = getTotalStudents(feature.properties.school.ID);
@@ -151,7 +167,7 @@
             if (isShift) {
                 schoolProfile.addToCompare(feature.properties.school.ID);
             } else {
-                schoolProfile.load([feature.properties.school.ID], currentYear);
+                schoolProfile.load([feature.properties.school.ID], yearOpts.currentYear);
             }
         });
     }
@@ -181,18 +197,6 @@
     var schoolLayers = [];
     var currentStudentsData;    // Stores data for current year.
 
-    // Store zip and year when refreshing via slider
-    var currentYear = 2019;
-
-    var yearSliderHandler = function (year) {
-        currentYear = year;
-        resetSchoolLayer();
-        fireZipClick();
-    };
-
-    // Load slider
-    loadSlider("slider-map", yearSliderHandler);
-
     var showSchools = function (zip) {
         var schoolsGeoJson = getSchoolsGeo(zip);
 
@@ -201,7 +205,7 @@
 
         // Load current year's school data from model.js 
         model.init(d => {
-            currentStudentsData = d.data.allSchools[currentYear];
+            currentStudentsData = d.data.allSchools[ yearOpts.currentYear ];
             var schoolLayer = getSchoolLayer(schoolsGeoJson);
             showSchoolsLegend();
             schoolLayers.push(schoolLayer);
@@ -209,33 +213,63 @@
     };
 
     var getSchoolLayer = function (schoolsGeoJson) {
+        // Add each to compare, but only if not simulated click.
+        // i.e., it's a user click.
+        if (!mapOpts.isSimClick) {
+            var sc = [];
+            for (var i in schoolsGeoJson.features) {
+                try {
+                    sc.push(schoolsGeoJson.features[i].properties.school.ID);
+                } catch(e) {
+                    //
+                }
+            }
+            schoolProfile.load(sc, yearOpts.currentYear);
+        }
+        // Afterward, always reset sim click status.
+        mapOpts.isSimClick = false;
+        
         return L.geoJSON(schoolsGeoJson, {
             onEachFeature: onEachSchoolFeature,
             pointToLayer: function (feature, latlng) {
                 var studentData = getTotalStudents(feature.properties.school.ID);
                 var isElementary = studentData[0];
                 var totalStudents = studentData[1];
-
+                var marker;
+                var id = feature.properties.school.ID;
+                
                 if (isElementary) {
-                    return L.shapeMarker(latlng, {
+                    marker = L.shapeMarker(latlng, {
                         shape: "triangle",
                         radius: 7,
                         fillColor: getElementarySchoolColor(totalStudents),
                         color: "#000",
                         weight: 1,
                         opacity: 1,
-                        fillOpacity: 0.8
+                        fillOpacity: 1,
+                        className: 'map-marker'
+                    });
+                } else {
+                    marker = L.circleMarker(latlng, {
+                        radius: 8,
+                        fillColor: getHighSchoolColor(totalStudents),
+                        color: "#000",
+                        weight: 1,
+                        opacity: 1,
+                        fillOpacity: 1,
+                        className: 'map-marker'
                     });
                 }
-
-                return L.circleMarker(latlng, {
-                    radius: 8,
-                    fillColor: getHighSchoolColor(totalStudents),
-                    color: "#000",
-                    weight: 1,
-                    opacity: 1,
-                    fillOpacity: 0.8
-                });
+                
+                // Do not return a marker if marker already exists
+                if (mapOpts.markersBySchoolID.hasOwnProperty(id)
+                    && mapOpts.markersBySchoolID[id] != null)
+                {
+                    return null;
+                }
+                
+                mapOpts.markersBySchoolID[id] = marker;
+                return marker;
             }
         }).addTo(map).bringToFront();
     };
@@ -302,6 +336,8 @@
     map.on({ zoomend: zoomOutOfFeature });
 
     var fireZipClick = function () {
+        mapOpts.isSimClick = true;
+        
         var zip = $("#school-zip").val();
         var layer = geojson.getLayer(zip);
 
@@ -314,4 +350,7 @@
 
     // Hook zip user input
     $("#btn-school-zip").on('click', fireZipClick);
+    
+    mapOpts.resetSchoolLayer = resetSchoolLayer;
+    mapOpts.fireZipClick = fireZipClick;
 })();

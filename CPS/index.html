@@ -7,36 +7,301 @@
 
     <!-- Bootstrap -->
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
-    <link href="/css/starter-template.css" rel="stylesheet">
-    <link href="/css/style.css" rel="stylesheet" />
+    <link href="./css/starter-template.css" rel="stylesheet">
+    <link href="./css/style.css" rel="stylesheet" />
+    <link href="./css/bubbles.css" rel="stylesheet" />
+    <link href="./css/stacked-bar.css" rel="stylesheet" />
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.3.4/dist/leaflet.css" integrity="sha512-puBpdR0798OZvTTbP4A8Ix/l+A4dHDD0DGqYW6RQ+9jxkRFclaxxQb/SJAWZfWAkuyeQUytO7+7N4QKrDh+drA==" crossorigin="" />
+    <link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+    <script src="https://unpkg.com/leaflet@1.3.4/dist/leaflet.js" integrity="sha512-nMMmRyTVoLYqjP9hrbed9S+FzjZHW5gY1TWCHA5ckwXZBadntCNs8kEqAWdrb9O7rxbCaA4lKTIWjDXZxflOcA==" crossorigin=""></script>
 </head>
 <body>
-    <div class="navbar navbar-inverse navbar-fixed-top" role="navigation">
+    <!--<div class="navbar navbar-inverse navbar-fixed-top" role="navigation">
         <div class="container">
             <div class="navbar-header">
-                <a class="navbar-brand active" href="#">CPS Data-driven Visualizations</a>
+                <a class="navbar-brand" href="index.html">CPS Data-driven Visualizations</a>
             </div>
             <div class="collapse navbar-collapse">
                 <ul class="nav navbar-nav">
-                    <li><a href="school-map.html">Map</a></li>
+                    <li class="active"><a href="school-map.html">Map</a></li>
                     <li><a href="school-bubble.html">School Demographies</a></li>
                     <li><a href="school-networks.html">School Networks</a></li>
                     <li><a href="school-per-year.html">Schools Per Year</a></li>
                     <li><a href="about.html">About</a></li>
                 </ul>
-            </div><!--/.nav-collapse -->
+            </div>
         </div>
-    </div>
+    </div>-->
 
-    <div class="container">
-
-        <div class="starter-template">
-            <h1>Welcome to CS 594 Project</h1>
-            <p class="lead">Data-driven Visualizations for Chicago Public School Demographies</p>
-            <p>Visualizing demographic trends of underrepresented high school students in the Chicago Public School system over the years.</p>
+    <div class="container" style="width:100%;margin:0;padding:0;">
+        <div class="main-view main-view-map" id="main-view-map">
+            <div class="row1">
+                <div class="column1" style="width: 600px"> <!--override-->
+                    <button id="btn-main-overview" style="margin-bottom: 4px;">
+                        Overview</button>
+                    <button id="btn-main-about">About</button><br />
+                    <input type="text" id="school-zip" placeholder="Zip" size="5" />
+                    <button id="btn-school-zip">Search</button>
+                    <button id="profile-search-button">
+                        <span id="profile-search-button-icon">&nbsp;</span>
+                            School Select
+                        </button>
+                </div>
+                <div class="column2">
+                    <div>
+                        Year: <span id="year" class="year unselectable-text" style="border:0; color:#f6931f; font-weight:bold;"></span>
+                    </div>
+                    <div id="slider-map"></div>
+                    <br />
+                    <!-- https://openclipart.org/detail/307315/info-icon-rounded -->
+                    Map info: <img src="./res/1538154643.png" class="more-info" data="Use the year slider to globally update year data.<br />Use [SHIFT + Click] to create a school comparison." />
+                </div>
+            </div>
+            <br />
+            <div style="height:80%;">
+                <div id='map'></div>
+            </div>
+        </div>
+        
+        <!--PROFILE-->
+        <div id="profile" class="main-view-four">
+            <div id="profile-content" style="display: none; width:100%;">
+                <input type="radio" name="profile-select-chart" value="0" class="hasPointer" id="profile-select-chart0" checked />
+                <label class="hasPointer" for="profile-select-chart0">Stacked</label>
+                <input type="radio" name="profile-select-chart" value="1" class="hasPointer" id="profile-select-chart1" />
+                <label class="hasPointer" for="profile-select-chart1">Line</label>
+                <!-- three divs, 20 40 40) -->
+                <div id="profile-content-multi">
+                    <div style="width: 30%;">
+                        Comparing <span id="profile-multi-num"></span> schools
+                        <br />
+                        <div id="profile-multi-counts"></div>
+                        <fieldset class="filters">
+                            <legend>Trends Key</legend>
+                            <div class="profile-trends-key" style="display:inline-block;background-color:#2c7bb6;"></div>
+                            <div class="profile-trends-key" style="display:inline-block;background-color:#abd9e9;"></div>
+                            <div class="" style="display:inline-block;height:10px;margin-right:2px;">rising</div>
+                            <div class="profile-trends-key" style="display:inline-block;background-color:#fdae61;"></div>
+                            <div class="profile-trends-key" style="display:inline-block;background-color:#d7191c;"></div>
+                            <div class="" style="display:inline-block;height:10px;margin-right:2px;">falling</div>
+                        </fieldset>
+                        <br style="clear: both;" />
+                    </div>
+                    <div style="width: 40%;" id="profile-multi-bar"></div>
+                    <div style="width: 29%;" id="lc-select-dems"></div>
+                    <br style="clear: both;" />
+                </div>
+                <div id="profile-content-single" style="display: none; width:100%;">
+                    <div style="width: 50%;float:left;" id="profile-single-info"></div>
+                    <fieldset class="filters">
+                            <legend>Trends Key</legend>
+                            <div class="profile-trends-key2" style="display:inline-block;background-color:#2c7bb6;"></div>
+                            <div class="profile-trends-key2" style="display:inline-block;background-color:#abd9e9;"></div>
+                            <div class="" style="display:inline-block;height:10px;margin-right:2px;">rising</div>
+                            <div class="profile-trends-key2" style="display:inline-block;background-color:#fdae61;"></div>
+                            <div class="profile-trends-key2" style="display:inline-block;background-color:#d7191c;"></div>
+                            <div class="" style="display:inline-block;height:10px;margin-right:2px;">falling</div>
+                        </fieldset>
+                        <br style="clear: both;" />
+                </div>
+            </div>
+            <div id="profile-charts"></div>
+        </div>
+        
+        <!--NETWORK-->
+        <div id="main-view-network" class="main-view-four">
+        <!-- Network filters div. Moved into div onload. -->
+            <div id="div-network-filters" style="display: none;" class="hasPointer paddedInputs">
+                <fieldset class="filters">
+                    <legend>Aligned Sort</legend>
+                    <select id="network-sort">
+                        <option disabled="true">--Sort By--</option>
+                        <option selected value=1>Alphabetical</option>
+                        <option value=2># schools (mean)</option>
+                        <option value=3># students (mean)</option>
+                    </select>
+                </fieldset>
+                <fieldset class="hasPointer paddedInputs filters">
+                    <legend>All or HS</legend>
+                    <input type="radio" name="nf-schools" id="nf-schools1" />
+                    <label for="nf-schools1">All schools</label>
+                    <input type="radio" name="nf-schools" id="nf-schools2" checked />
+                    <label for="nf-schools2">HS only</label>
+                </fieldset>
+                <br style="clear:both;" />
+            </div>
+        </div>        
+        
+        <!--BUBBLE-->
+        <div id="main-view-bubble" class="main-view-four" style="overflow: hidden;">
+            <div class="row1">
+                <div class="column1">
+                    
+                        Demography: <select id="demography"></select>
+                    
+                    <!-- https://openclipart.org/detail/307315/info-icon-rounded -->
+                    <img src="./res/1538154643.png" class="more-info" data="Bubble-size adjusts by no. of schools displayed.<br />Five-year pop. trends: Red = Falling; Blue = Rising" />
+                </div>
+                <div class="column2">
+                    <div class="sub-col1">
+                        <span>
+                            <label class="hasPointer">
+                                <input id="combine" type="radio" name="grouping" value="combine" checked>
+                                Bird's-eye view
+                            </label>
+                            <label class="hasPointer">
+                                <input id="population" type="radio" name="grouping" value="population">
+                                Sorted view
+                            </label>
+                        </span>
+                    </div>
+                    <div class="clearfix"></div>
+                </div>
+                <div class="clearfix"></div>
+            </div>
+            
+            <div id="school-info"></div>
+            <div id="bubble-chart"></div>
+        </div>
+        
+        <!--STACKED-->
+        <div id="main-view-stacked" class="main-view-four">
+            <div id="toolbar-stackedBar">
+                <fieldset class="filters">
+                    <legend>Select demography to sort:</legend>
+                    <div class="legendSBC"></div>
+                </fieldset>
+                <img src="./res/1538154643.png" class="more-info" data="Use [SHIFT + Click] to create a school comparison." />
+                <br style="clear:both;" />
+            </div>
+            <div class="chart"></div>
         </div>
     </div><!-- /.container -->
-
+    
+    <!--Welcome page-->
+    <div id="div-main-overview" style="display: none;">
+        <h1>Overview</h1>
+        <hr style="width: 100%; border: 0px; border-top: 10px groove #ddd;" />
+        <div style="max-width: 1000px; margin:0 auto;">
+            <p><i>Goal:</i> Visualizing school demographic data within the Chicago Public School (CPS) system (2014-2019).</p>
+            <p><i>Data:</i> Age, population, and race / ethnicity data combined with school, network, and location data over the given five-year time period.</p>
+            <p><i>Map:</i> The CPS system segregated by zip code.</p>
+            <p><i>Profile and comparisons:</i> View demographic data for individual schools, or compare same data for multiple schools.</p>
+            <p><i>Bubble chart:</i> Broad overview of all schools in the CPS system with accompanied network view.</p>
+            <p><i>Network sort:</i> Aligned sort of networks in the CPS system. Sorting by mean will sort descending (highest on top).</p>
+            <p><i>Stacked bar chart:</i> An exploded view of all high schools within the system. Clicking a demographic in the legend sorts data by that demographic. Clicking an individual school opens its profile. Hold [SHIFT + Click] to compare multiple schools.</p>
+            <small>&copy; Copyright 2018, UIC</small>
+        </div>
+        <br />
+        <br />
+        <br />
+        <label class="hasPointer" id=""><!--When cb is within label
+                                    then htmlFor is not required.-->
+            <input type="checkbox" checked id="cb-load-overview" class="hasPointer" value="1" />
+            Show Overview when page loads?</label>
+    </div>
+    <!--About page-->
+    <div id="div-main-about" style="display: none;">
+        <h1>About</h1>
+        <hr style="width: 100%; border: 0px; border-top: 10px groove #ddd;" />
+        <div style="max-width: 1000px; margin:0 auto;">
+            <h2>Abstract</h2>
+            <p>
+            <i>Goal:</i> Visualization of school demographic data within the Chicago Public School (CPS) system that will be used by the University of Illinois at Chicago Department of Minority Affairs for recruitment purposes. The project is built as a modern web application and conveys spatio-temporal demographic data between schools within the CPS system, with a specific focus on high schools. Demographic data (age, population, and race / ethnicity) is combined with school, network, and location data over a five-year time period (2014-2019). The project focus is to aid in the decision-making process for resources delegation for recruitment of underrepresented students within the Chicago region.
+            </p>
+            
+            <p class="lead">This data-driven visualization application was created as part of the Visual Data Science course (CS594, Fall 2018) at the University of Illinois at Chicago on behalf of the Department of Minority Affairs at UIC.</p>
+            
+            <h2>Technologies Used</h2>
+            <ul>
+                <li>jQuery, javaScript</li>
+                <li>Leaflet</li>
+                <li>D3</li>
+                <li>Bootstrap</li>
+                <li>HTML5</li>
+                <li>CSS3</li>
+            </ul>
+            
+            <h2>Data Source</h2>
+            <ul>
+                <li><a href="https://cps.edu/SchoolData/Pages/SchoolData.aspx" target="_blank">
+                    CPS, Department of School Quality Measurement</a>
+                </li>
+            </ul>
+            
+            <h2>Team Members</h2>
+            <div style="margin-left: 24px;">
+                <h3>Vaibhav Singh</h3>
+                <p>vsingh38@uic.edu</p>
+                <p>Masters Student, Department of Computer Science</p>
+                <a href="https://www.linkedin.com/in/singh-vaibhav/" target="_blank">
+                    LinkedIn</a>
+                <br />
+                <br />
+                <h3>David Shumway</h3>
+                <p>dshumw2@uic.edu </p>
+                <p>PhD Student, Department of Computer Science</p>
+                <a href="https://www.linkedin.com/in/david-shumway-0b4661159/" target="_blank">
+                    LinkedIn</a>
+                <br />
+                <br />
+                <h3>Josue Alvarez</h3>
+                <p>jalvar39@uic.edu</p>
+                <p>Masters Student, Department of Computer Science</p>
+                <a href="https://www.linkedin.com/in/jsalvarez1993/" target="_blank">
+                    LinkedIn</a>
+            </div>
+            
+            <h2>Demonstration</h2>
+            <h4><a href="https://youtu.be/WN1UkMVGiFI" target="_blank">Watch the video</a></h4>
+            
+            <small>&copy; Copyright 2018, UIC</small>
+        </div>
+    </div>
+    
+    
+    
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
+    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.13/d3.min.js"></script>
+    <script src="js/label.js"></script><!-- requires d3.min.js -->
+    <script>
+    var d3_version1 = d3;
+    window.d3 = null;
+    </script>
+
+    <script src="https://d3js.org/d3.v4.min.js"></script>
+    <script>
+    var d3_version2 = d3;
+    </script>
+    
+    <script src="https://d3js.org/d3-queue.v3.min.js"></script>
+    <script src="js/leaflet-svg-shape-markers.min.js"></script>
+    <script src="js/jquery.csv.min.js"></script>
+    <script src="js/data/cps-schema.js"></script>
+    <script src="js/data/chicago-map.js"></script>
+    <script src="js/models/cps-school-data.js"></script>
+    <script src="https://d3js.org/d3-color.v1.min.js"></script>
+    <script src="https://d3js.org/d3-interpolate.v1.min.js"></script>
+    <script src="https://d3js.org/d3-scale-chromatic.v1.min.js"></script>
+    <script src="js/models/model.js"></script>
+    <script src="js/slider.js"></script>
+    <script src="js/views/tooltip.js"></script>
+    
+    <script src="js/controllers/school-map-controller.js"></script>
+    <script src="js/controllers/school-profile-controller.js"></script>
+    <script src="js/views/school-map.js"></script>
+    <script src="js/views/school-profile.js"></script>
+    <script src="js/views/school-networks.js"></script>
+    
+    <script src="js/controllers/school-bubble-controller.js"></script>
+    <script src="js/views/school-bubbles.js"></script>
+    
+    <script src="js/views/stacked-bar.js"></script>
+    
+    <script src="js/views/main-view.js"></script>
 </body>
 </html>

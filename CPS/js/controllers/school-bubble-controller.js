@@ -1,14 +1,19 @@
 ﻿var schoolBubbleController = function () {
-    model.init(extractSchools);
-
+    this.bubbleChart = null;
+    var thisRef = this;
     var schoolData = {};
+    // Must wait until function has returned to continue script execution!
+    //model.init(extractSchools);
+    
     function extractSchools(d) {
-        Object.keys(d.data.allSchools).forEach(y => {
-            console.log('year', y);
-            schoolData[y] = getSchoolData(d, y);
-        });
+        if (schoolData) {
+            Object.keys(d.data.allSchools).forEach(y => {
+                schoolData[y] = getSchoolData(d, y);
+            });
+        }
 
         // Call external (dependent) module here
+        //thisRef.bubbleChart = 
         createBubbleChart();
     }
 
@@ -39,7 +44,8 @@
             var schoolName = school["20th"]["School Name"];
             var students = school.total;// Utilize parsed total
             if (!students || school.total <= 20) {
-                console.log(`WARN: School excluded ${schoolName}. (Less than 20 students)`);
+                // Removing warning.
+                // console.log(`WARN: School excluded ${schoolName}. (Less than 20 students)`);
                 return;
             }
 
@@ -74,7 +80,7 @@
                 return;
             }
             retval.push({
-                id: s.sId,
+                id: s.id,
                 schoolName: s.schoolName,
                 network: s.network,
                 isElementary: s.isElementary,
@@ -107,6 +113,7 @@
     };
 
     return {
+        extractSchools: extractSchools,
         filterDemographicData: filterDemographies,
         getSchoolsByYear: getSchoolsByYear,
         getSchoolNetworksDict: getSchoolNetworksDict,

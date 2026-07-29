@@ -15,11 +15,7 @@
 var model = {
 
     // Combined data from loaded data sets.
-    // E.g., in order to determine if a school is a high school in
-    // demographics files for any given year, it's required to
-    // check enrollment data from grades 9-12, which is in 
-    // enrollment data files.
-    data: { // Processed data
+    data: {
         highSchools: {},
         allSchools: {}, // Includes schools with only k-8 population
         networkTotals: {
@@ -33,6 +29,7 @@ var model = {
             },
         },
         byId: {}, // dictionary lookup referencing cpsData by school ID
+        schoolFiveYearMean: {}, // dictionary lookup by school ID (all grades & schools)
         networkProfile: {
             all: {
               data: { // d3 styled arrays
@@ -174,6 +171,53 @@ model.load = function(error,
         model.data.byId[id][col] = cpsData.rows[i][j];
       }
     }
+  }
+  
+  // Generate 5-year mean for schools
+  // Note: Opt1: If a school did not exist, count the pop. as zero
+  // Note: Opt2: If a school did not exist, ignore this year (using)
+  // Also generate the linear regression value of school's population
+  // over this time period. (Save to byId data structure.)
+  var p = {};
+  for (var year in model.data.allSchools) {
+    // For each school year
+    for (var id in model.data.allSchools[year]) {
+      // For each school ID
+      var t = model.data.allSchools[year][id].total;
+      if (!p[ id ]) {
+        p[ id ] = { // value and year for linreg.
+          t: t,
+          num: 1,
+          values: [{ // Ex: {value: 2537, year: 2014}
+            value: t,
+            year: parseInt(year)
+          }]
+        }
+      } else {
+        p[ id ].t += t;
+        p[ id ].num ++;
+        p[ id ].values.push({ // Ex: {value: 2537, year: 2014}
+          value: t,
+          year: parseInt(year)
+        });
+      }
+    }
+  }
+  for (var id in p) {
+    model.data.schoolFiveYearMean[ id ] = p[ id ].t / p[ id ].num;
+    // Check that byId contains school
+    if (!model.data.byId[id]) {
+      model.data.byId[id] = {}
+    }
+    // Set byId value for FiveYearMeanPop
+    var x = model.data.schoolFiveYearMean[ id ];
+    x = Math.round(x*1000) / 1000; // Trim for readability
+    model.data.byId[id]['FiveYearMeanPop'] = x;
+    // Set byId value for linreg
+    var x = profile.lineRegNormalize(p[ id ].values);
+    x = Math.round(x*1000) / 1000; // Trim for readability
+    model.data.byId[id]['PopulationSlope (0-1)'] = x;
+      
   }
   
   // Loading data is complete.

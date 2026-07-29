@@ -19,7 +19,6 @@ var expandChicagoGeo = function () {
 
     ChicagoMapData.features.forEach(cm => {
         var schoolsByZip = SchoolsData.filter(s => s.Zip === cm.properties.ZIP);
-
         if (!schoolsByZip) {
             console.log("WARN: No schools in Zip: ${cm.properties.ZIP}.");
         }

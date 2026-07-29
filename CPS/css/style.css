@@ -1,31 +1,109 @@
 ﻿body {
+    padding-top: 0;
+    background-color: #F5F5F5;
+    overflow: hidden; /* hide body overflows */
 }
 
 #map {
-    height: 500px;
+    height: 100%; /*todo: dynamic height*/
     width: 100%;
 }
 
+.main-view {
+    width: 33.33%;
+    border: 2px solid grey;
+    margin-right: -2px;
+    margin-bottom: -2px;
+    overflow: auto;
+    float: left;
+}
+.main-view-map {
+    height: 100%;
+}
+.main-view-four {
+    float: left;
+    width: 33.33%;
+    border: 2px solid grey;
+    margin-right: -2px;
+    margin-bottom: -2px;
+    overflow: auto;
+}
+.more-info {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+}
+
+/* Bubble */
+#combine, #population {
+    cursor: pointer;
+}
+
+/*
+.map-marker-selected {
+*/
+/*
+    -webkit-animation: pulsate 2s infinite;
+    -moz-animation: pulsate 2s infinite;
+    animation: pulsate 2s infinite;
+*/
+    
+/*
+    -webkit-animation:spin 4s linear infinite;
+    -moz-animation:spin 4s linear infinite;
+    animation:spin 4s linear infinite;
+    
+    -webkit-transform-origin: 100% 100% 0;
+    -moz-transform-origin: 100% 100% 0;
+    -o-transform-origin: 100% 100% 0;
+    transform-origin: 100% 100% 0;
+*/
+
+/*
+}
+*/
+.map-marker-hovered {
+
+}
+.map-marker:hover {
+    -webkit-animation: pulsate 1s ease-out infinite;
+    -moz-animation: pulsate 1s ease-out infinite;
+    animation: pulsate 1s ease-out infinite;
+}
+@-webkit-keyframes pulsate {/*https://stackoverflow.com/questions/31961549/pulsating-leaflet-marker-using-css3-animations*/
+    0% {opacity: 0.2;}
+    50% {opacity: 1.0;}
+    100% {opacity: 0.2;}
+}
+
+/*
+@-moz-keyframes spin { 100% { -moz-transform: rotate(360deg); } }
+@-webkit-keyframes spin { 100% { -webkit-transform: rotate(360deg); } }
+@keyframes spin { 100% { -webkit-transform: rotate(360deg); transform:rotate(360deg); } }
+*/
+
 /*Profile*/
 #profile {
-    width: 100%;
+    /*width: 100%;
     margin-top: 100px;
     margin-bottom: 200px;
     border-top: 1px solid #333;
     padding-top: 60px;
-    display: inline-block;
+    display: inline-block;*/
 }
 
 #profile-preload {
-    margin-left: 10%;
-    margin-top: 60px;
-    margin-bottom: 60px;
-    width: 80%;
+    display: flex;
+    margin-left: 5%;
+    margin-top: 20px;
+    width: 90%;
     border: 1px dashed #bbb;
-    font-size: 2em;
+    font-size: 1.4em;
     text-align: center;
-    padding: 100px;
     color: #bbb;
+    vertical-align: middle;
+    align-items:center; /*CSS 3*/
+    justify-content: center; /*CSS 3*/
 }
 
 .row1 {
@@ -45,6 +123,27 @@
     flex-direction: column;
 }
 
+#school-zip {
+    text-align: center;
+}
+#profile-search-button-icon {
+    /* https://openclipart.org/detail/188650/search-ideogram */
+    background: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAAsTAAALEwEAmpwYAAABYUlEQVQ4y6XUvUucQRDH8Q+HYHKFBHvhKgVBiaI2pr4uRWxsAjYKNnJd/grFzkYQGwsLu4DEl1awDTbWWgRUDt9QuOCl2D2ynM9z9xw3sDzDM7/57jO7Mw/vbRQbuMAjnnGJLUzpwQYiqIFmznrDLspFYIdJ4hm+YwJzWMWvJH6OwU7AzSh8QQ2lHN0S7qN2PQ82hr9RVCtwNItJ+V+yBBtJmaUCQDiIOftZwYsYXCsIg4WYc5cVfIzB+R6AFf8vaDgNlJIyGz0A64nfbAdeR38aHwoCx5Pq6u3A0+h/w2eh30a7AJfj82dWcFpogabQZz/wKtz+ZIa+mpzfXN6Ou1FwL/RZFSd4wm/MJrA/UXuDj3nAsjBOrZ0PhNaoYARfseP9bJ92gg4K4/Qm/+fQTL6wtU46QQnjtI/bJOkBe5iJyUdt0ONu0JYN4VPG+76geZYF3e4HmAW96hfYgm5H2Mo/4Gt4AIY8NPgAAAAASUVORK5CYII=');
+    background-repeat: no-repeat;
+    background-position: left;
+    display: inline-block;
+    width: 27px;
+}
+#profile-search-button {
+    /*background: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAAsTAAALEwEAmpwYAAABYUlEQVQ4y6XUvUucQRDH8Q+HYHKFBHvhKgVBiaI2pr4uRWxsAjYKNnJd/grFzkYQGwsLu4DEl1awDTbWWgRUDt9QuOCl2D2ynM9z9xw3sDzDM7/57jO7Mw/vbRQbuMAjnnGJLUzpwQYiqIFmznrDLspFYIdJ4hm+YwJzWMWvJH6OwU7AzSh8QQ2lHN0S7qN2PQ82hr9RVCtwNItJ+V+yBBtJmaUCQDiIOftZwYsYXCsIg4WYc5cVfIzB+R6AFf8vaDgNlJIyGz0A64nfbAdeR38aHwoCx5Pq6u3A0+h/w2eh30a7AJfj82dWcFpogabQZz/wKtz+ZIa+mpzfXN6Ou1FwL/RZFSd4wm/MJrA/UXuDj3nAsjBOrZ0PhNaoYARfseP9bJ92gg4K4/Qm/+fQTL6wtU46QQnjtI/bJOkBe5iJyUdt0ONu0JYN4VPG+76geZYF3e4HmAW96hfYgm5H2Mo/4Gt4AIY8NPgAAAAASUVORK5CYII=');
+    background-repeat: no-repeat;
+    background-position: left;*/
+    text-align: right;
+    width: 140px;
+}
+.year {
+    background-color: none;
+}
 .unselectable-text {
     /*https://stackoverflow.com/questions/2310734/how-to-make-html-text-unselectable*/
     -webkit-touch-callout: none;
@@ -66,7 +165,7 @@
     background: black;
     height: 12px;
     position: absolute;
-    top: -2px;
+    top: 0px;
 }
 
 .info {
@@ -99,7 +198,7 @@
 
 /* General */
 .paddedInputs {
-    margin-right: 6px !important;
+    margin-right: 2px !important;
 }
 
 fieldset.hasPointer input:hover {
@@ -111,8 +210,8 @@ fieldset.hasPointer label:hover {
 }
 
 fieldset.filters { /*Override*/
-    padding: .35em .625em .75em !important;
-    margin: 0 2px !important;
+    padding: 0 !important;
+    margin: 0 !important;
     border: 1px solid silver !important;
     width: fit-content;
 }
@@ -130,10 +229,14 @@ fieldset.filters { /*Override*/
     }
 
 fieldset.filters {
-    /*
-    float: left;
-*/
     display: inline-block;
+}
+
+/* Stacked Bar */
+#toolbar-stackedBar {
+    overflow: hidden;
+    border:1px solid black;
+    height: 15%;
 }
 
 /* Profile */
@@ -148,11 +251,31 @@ fieldset.filters {
     margin-right: 2px;
     margin-bottom: 20px; /* On wrap, requires space between containers */
 }
-
+#profile-content-multi>div {
+    float: left;
+    /*zoom: 0.8; Reduce some oversizing here.*/
+}
+.profile-multi-tooltip {
+    cursor: pointer;
+}
+.profile-trends-key {
+    display: initial;
+    width: 10px;
+    height: 10px;
+    margin-right: 0px;
+}
+.profile-trends-key2 { /*Same as 1 but not selectable*/
+    display: initial;
+    width: 10px;
+    height: 10px;
+    margin-right: 0px;
+}
 .profile-bar-rect:hover {
     cursor: pointer;
 }
-
+#profile-charts {
+    text-align: center;
+}
 .hasPointer:hover {
     cursor: pointer;
 }
@@ -199,16 +322,38 @@ fieldset.filters {
     width: 80%;
     height: 80%;
     margin-left: 10%;
-    padding: 12px;
-    background-color: #eee;
+    padding: 24px 48px;
+    background-color: #fcfcfc;
     opacity: 1;
-    border: 1px solid #ccc;
+    border: 1px solid #bbb;
+    border-radius: 6px;
     overflow: auto;
     position: fixed;
     top: 80px;
     left: 0;
     z-index: 1000;
+    box-shadow: 0px 0px 260px 60px #888888;
+
 }
+/* See, e.g., https://stackoverflow.com/questions/18611195/x-close-button-only-using-css */ 
+#profile-lightbox-close-btn2:hover {
+    opacity: 1;
+    cursor: pointer;
+}
+#profile-lightbox-close-btn2{
+    position: absolute;
+    left: 90%;
+    top: 20px;
+    font-size: 60px;
+    color: #000;
+    opacity: 0.6;
+    z-index: 10000;
+}
+#profile-lightbox-close-btn2:after{
+  display: inline-block;
+  content: "\00d7"; /* This will render the 'X' */
+}
+
 
 .profile-lightbox-compare-container {
     float: left;
@@ -228,7 +373,7 @@ fieldset.filters {
 
 .profile-lightbox-compare-results {
     width: 90%;
-    height: 80%;
+    height: 70%;
     margin-top: 4px;
     margin-left: 5%;
     border: 1px solid #bbb;
@@ -261,6 +406,9 @@ fieldset.filters {
         cursor: pointer;
     }
 /* Network */
+#network-charts {/* center the charts */
+    text-align: center;
+}
 #div-network-filters {
     border: 1px solid #bbb;
     padding: 2px;
@@ -276,7 +424,7 @@ fieldset.filters {
 
 .network-axis text {
     font-family: sans-serif;
-    font-size: 11px;
+    font-size: 10px;
 }
 
 .network-rect:hover {
@@ -302,18 +450,13 @@ fieldset.filters {
 div.tooltip {
     position: absolute;
     text-align: left;
-    /*
-    width: 120px;
-    height: 32px;
-*/
-    /*
-    width: 60px;
-    height: 32px;
-*/
+    top:0;
+    left:0;
     padding: 4px 8px 4px 8px;
     font: 12px sans-serif;
     background: lightsteelblue;
-    border: 0px;
+    border-color: 0px solid #333;
     border-radius: 8px;
     pointer-events: none;
+    margin-left: 20px;
 }
