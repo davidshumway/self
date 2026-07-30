@@ -123,7 +123,7 @@ The FLBS dataset, with its minute-resolution marketplace data and roughly 5-year
 **Contact:** David Shumway | davidshumway@gmail.com | 773-759-5970
 
 **Links:**
-- Preprint: [SSRN Abstract](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=5233369)
+- Preprint: [SSRN Abstract](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=7040318)
 - GitHub: [github.com/davidshumway](https://github.com/davidshumway)
 - Open Ontologies MCP Toolset: [github.com/fabio-rovai/open-ontologies](https://github.com/fabio-rovai/open-ontologies)
 - Dataset (pending): Zenodo or Hugging Face Datasets (link forthcoming)
