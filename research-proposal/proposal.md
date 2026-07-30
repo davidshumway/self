@@ -7,7 +7,7 @@ The FLBS distributed automation platform processed 3M+ microtasks across 1,100+ 
 The system generated a number of rich, under-analyzed datasets spanning the full 8-year lifecycle:
 
 - **AMT_Batch (Nov 2013 – Jan 2019)**: ~480 intervals/day of marketplace state, including task title, requester, HIT count, reward, posting time, and qualifications. Reconstructed from a three-minute scraper.
-- **AMT_Alerts (Oct 2013 – Jun 2018)**: Ground-truth ledger of final outcomes for all submitted, returned, or expired HITs, including anonymized account ID, task, requester, reward, status, and completion time.
+- **AMT_Alerts (Oct 2013 – Jun 2018)**: Ground-truth ledger of final outcomes for all submitted, returned, or expired HITs, including account ID (anonymized), task, requester, reward, status, completion time, and optional requester feedback.
 - **HITRecords (Jul 2014 – Aug 2018)**: Submitted task payloads: account ID, task, requester, HIT group ID, reward, and a JSON blob of requester-provided inputs. Answer fields are excluded (property of the requester/customer); per-field metadata (count, min/mean/median/max length) is provided instead.
 - **IncomeRecords (Jul 2014 – Jan 2018)**: ~2.3M-row ledger of all accepted HITs capturing full task lifecycle (acceptance, completion, expiration, return/failure status) with second-level timestamps and MTurk identifiers. Enables analysis of rate-limiting (~2.3s intervals), task durations, effective hourly rates, and multi-account coordination.
 - **Git log (2013–2018)**: 4,000+ commits spanning 300K+ lines of JavaScript, 500+ custom scripts, and a factory-based developer ecosystem built from scratch.
@@ -89,7 +89,7 @@ DoorDash is the ideal place for this work because:
 
 ## Anticipated Outcomes
 
-- A living ontology of code and marketplace evolution in human-in-the-loop systems
+- An ontology of code and marketplace evolution in human-in-the-loop systems
 - A reusable methodology for LLM-assisted static code analysis of marketplace codebases
 - Insights into marketplace dynamics that could inform DoorDash's optimization efforts
 - Publication at a top venue (KDD, WWW, or ICML/NeurIPS workshop)
