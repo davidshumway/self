@@ -4,7 +4,7 @@ Technical Retrospective
 
 Author: David Shumway
 
-Last updated July 22, 2026
+Last updated August 7, 2026
 
 ## Introduction
 
@@ -1124,7 +1124,7 @@ Building MALDI-DB was a journey from concept to working platform over three year
 
 For researchers building similar platforms, I hope this technical overview helps you navigate the challenges of integrating web frameworks with scientific computing, handling complex data models, and building community features that scientists actually need.
 
-The complete codebase is available at https://github.com/idbac/maldidb. We welcome contributions from the community.
+The complete codebase is available at https://github.com/davidshumway/maldidb-1. We welcome contributions from the community.
 
 ---
 
